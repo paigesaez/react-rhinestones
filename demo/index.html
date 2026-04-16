@@ -46,6 +46,15 @@
       animation: crystal-float 5s ease-in-out infinite;
       animation-delay: var(--breathe-delay, 0s);
     }
+    .crystal-container { pointer-events: auto; }
+    .crystal-spin {
+      transition: transform 0.5s ease-out, filter 0.5s ease-out;
+    }
+    .crystal-container:hover .crystal-spin {
+      transform: scale(1.12);
+      filter: brightness(1.2)
+        drop-shadow(0 0 12px hsla(var(--glint-hue, 260), 50%, 60%, 0.5));
+    }
     @media (prefers-reduced-motion: reduce) {
       .crystal-gem { animation: none; }
       .crystal-glint, .crystal-sweep, .crystal-rainbow, .crystal-counter-sweep { transition: none; transform: none; }
@@ -59,22 +68,22 @@
     import { createRoot } from "https://esm.sh/react-dom@19/client";
     import { createElement as h, useEffect, useRef, useMemo } from "https://esm.sh/react@19";
 
-    // 7-color mineral palette — vivid, not pastel
+    // 7-color mineral palette — saturated, jewel-tone
     const PALETTE = [
-      "#8828d0",  // amethyst
-      "#c040a0",  // rose quartz
-      "#b0b8f0",  // moonstone
-      "#20b0e0",  // aquamarine
-      "#18a050",  // emerald
-      "#3058e0",  // sapphire
-      "#d0a020",  // citrine
+      "#7B3FA0",  // amethyst
+      "#B85588",  // rose quartz
+      "#9098C8",  // moonstone
+      "#2E8BA8",  // aquamarine
+      "#2A7A4C",  // emerald
+      "#3050A0",  // sapphire
+      "#B8882A",  // citrine
     ];
 
     const SIZE_CLASSES = [
-      { fraction: 0.35, scaleMin: 0.25, scaleMax: 0.55, opacityMin: 0.6, opacityMax: 0.8 },
-      { fraction: 0.30, scaleMin: 0.5, scaleMax: 0.85, opacityMin: 0.7, opacityMax: 0.9 },
-      { fraction: 0.22, scaleMin: 0.8, scaleMax: 1.4, opacityMin: 0.8, opacityMax: 1.0 },
-      { fraction: 0.13, scaleMin: 1.3, scaleMax: 2.2, opacityMin: 0.85, opacityMax: 1.0 },
+      { fraction: 0.30, scaleMin: 0.4, scaleMax: 0.7, opacityMin: 0.7, opacityMax: 0.85 },
+      { fraction: 0.30, scaleMin: 0.7, scaleMax: 1.1, opacityMin: 0.8, opacityMax: 0.95 },
+      { fraction: 0.25, scaleMin: 1.0, scaleMax: 1.6, opacityMin: 0.85, opacityMax: 1.0 },
+      { fraction: 0.15, scaleMin: 1.5, scaleMax: 2.4, opacityMin: 0.9, opacityMax: 1.0 },
     ];
 
     function makeRand(seed) {
@@ -125,29 +134,27 @@
           // Glass gradient — left face (bright, transparent)
           h("linearGradient", { id: `gL${id}`, x1: "0%", y1: "0%", x2: "80%", y2: "100%" },
             h("stop", { offset: "0%", stopColor: `hsla(${hu},${Math.min(s+20,100)}%,94%,0.85)` }),
-            h("stop", { offset: "40%", stopColor: `hsla(${hu},${s+10}%,80%,0.6)` }),
-            h("stop", { offset: "100%", stopColor: `hsla(${hu},${s}%,55%,0.45)` }),
+            h("stop", { offset: "40%", stopColor: `hsla(${hu},${s+10}%,80%,0.90)` }),
+            h("stop", { offset: "100%", stopColor: `hsla(${hu},${s}%,55%,0.75)` }),
           ),
           // Glass gradient — center face
           h("linearGradient", { id: `gC${id}`, x1: "20%", y1: "0%", x2: "80%", y2: "100%" },
-            h("stop", { offset: "0%", stopColor: `hsla(${hu+5},${s+5}%,82%,0.55)` }),
-            h("stop", { offset: "50%", stopColor: `hsla(${hu+10},${s}%,60%,0.4)` }),
-            h("stop", { offset: "100%", stopColor: `hsla(${hu+15},${s-5}%,38%,0.5)` }),
+            h("stop", { offset: "0%", stopColor: `hsla(${hu+5},${s+5}%,82%,0.85)` }),
+            h("stop", { offset: "50%", stopColor: `hsla(${hu+10},${s}%,60%,0.70)` }),
+            h("stop", { offset: "100%", stopColor: `hsla(${hu+15},${s-5}%,38%,0.80)` }),
           ),
           // Glass gradient — right face (dark, still glassy)
           h("linearGradient", { id: `gR${id}`, x1: "100%", y1: "0%", x2: "0%", y2: "80%" },
-            h("stop", { offset: "0%", stopColor: `hsla(${hu+20},${s}%,42%,0.55)` }),
-            h("stop", { offset: "100%", stopColor: `hsla(${hu+25},${s-10}%,15%,0.7)` }),
+            h("stop", { offset: "0%", stopColor: `hsla(${hu+20},${s}%,42%,0.85)` }),
+            h("stop", { offset: "100%", stopColor: `hsla(${hu+25},${s-10}%,15%,0.95)` }),
           ),
           // Specular gradient for point
           h("linearGradient", { id: `gP${id}`, x1: "30%", y1: "100%", x2: "60%", y2: "0%" },
-            h("stop", { offset: "0%", stopColor: `hsla(${hu},${s}%,70%,0.7)` }),
+            h("stop", { offset: "0%", stopColor: `hsla(${hu},${s}%,70%,0.95)` }),
             h("stop", { offset: "50%", stopColor: `hsla(${hu-10},${s+15}%,92%,0.9)` }),
             h("stop", { offset: "100%", stopColor: "rgba(255,255,255,0.98)" }),
           ),
         ),
-        // ── Opaque body — gives the crystal substance on any background
-        h("polygon", { points: "12,130 12,46 38,6 66,50 66,130", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // ── Ambient glow beneath
         h("ellipse", { cx: 38, cy: 80, rx: 25, ry: 55, fill: `hsla(${hu},60%,65%,0.08)`, filter: `url(#gb3${id})` }),
         // ── Deep internal refraction (visible through the glass)
@@ -162,8 +169,8 @@
         h("polygon", { points: "54,130 54,42 66,50 66,130", fill: `url(#gR${id})` }),
         // ── Termination point facets
         h("polygon", { points: "12,46 28,38 38,6", fill: `url(#gP${id})` }),
-        h("polygon", { points: "28,38 54,42 38,6", fill: `hsla(${hu+5},${s+8}%,80%,0.65)` }),
-        h("polygon", { points: "54,42 66,50 38,6", fill: `hsla(${hu+25},${s-8}%,20%,0.6)` }),
+        h("polygon", { points: "28,38 54,42 38,6", fill: `hsla(${hu+5},${s+8}%,80%,0.95)` }),
+        h("polygon", { points: "54,42 66,50 38,6", fill: `hsla(${hu+25},${s-8}%,20%,0.90)` }),
         // ── Edge highlights — sharp white + soft bloom
         h("line", { x1: 28, y1: 130, x2: 28, y2: 38, stroke: "white", strokeWidth: 1.2, opacity: 0.75 }),
         h("line", { x1: 28, y1: 130, x2: 28, y2: 38, stroke: `hsla(${hu},60%,92%,0.35)`, strokeWidth: 4, filter: `url(#gb2${id})` }),
@@ -210,18 +217,16 @@
           h("filter", { id: `nb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 18, cy: 80, rx: 14, ry: 60, fill: `hsla(${hu},55%,60%,0.06)`, filter: `url(#nb3${id})` }),
-        // Opaque body
-        h("polygon", { points: "5,145 5,32 18,2 31,35 31,145", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Internals
         h("polygon", { points: "9,140 9,38 14,30 14,140", fill: `hsla(${hu},55%,88%,0.1)`, filter: `url(#nb${id})` }),
         // Faces — glassy
         h("polygon", { points: "5,145 5,32 14,24 14,145", fill: `hsla(${hu},${Math.min(s+20,100)}%,90%,0.7)` }),
-        h("polygon", { points: "14,145 14,24 26,28 26,145", fill: `hsla(${hu+8},${s}%,58%,0.45)` }),
-        h("polygon", { points: "26,145 26,28 31,35 31,145", fill: `hsla(${hu+22},${s-8}%,18%,0.65)` }),
+        h("polygon", { points: "14,145 14,24 26,28 26,145", fill: `hsla(${hu+8},${s}%,58%,0.75)` }),
+        h("polygon", { points: "26,145 26,28 31,35 31,145", fill: `hsla(${hu+22},${s-8}%,18%,0.95)` }),
         // Point
         h("polygon", { points: "5,32 14,24 18,2", fill: `hsla(${hu},${s+10}%,95%,0.9)` }),
-        h("polygon", { points: "14,24 26,28 18,2", fill: `hsla(${hu+5},${s}%,75%,0.65)` }),
-        h("polygon", { points: "26,28 31,35 18,2", fill: `hsla(${hu+20},${s-5}%,22%,0.6)` }),
+        h("polygon", { points: "14,24 26,28 18,2", fill: `hsla(${hu+5},${s}%,75%,0.95)` }),
+        h("polygon", { points: "26,28 31,35 18,2", fill: `hsla(${hu+20},${s-5}%,22%,0.90)` }),
         // Edges
         h("line", { x1: 14, y1: 145, x2: 14, y2: 24, stroke: "white", strokeWidth: 1, opacity: 0.7 }),
         h("line", { x1: 14, y1: 145, x2: 14, y2: 24, stroke: `hsla(${hu},55%,92%,0.3)`, strokeWidth: 3, filter: `url(#nb2${id})` }),
@@ -252,23 +257,21 @@
           h("filter", { id: `db3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 35, cy: 80, rx: 22, ry: 60, fill: `hsla(${hu},55%,60%,0.06)`, filter: `url(#db3${id})` }),
-        // Opaque body
-        h("polygon", { points: "10,120 10,40 34,5 60,44 60,120 34,155", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Internals
         h("polygon", { points: "16,115 16,45 24,40 24,115", fill: `hsla(${hu},50%,88%,0.1)`, filter: `url(#db${id})` }),
         h("ellipse", { cx: 32, cy: 80, rx: 7, ry: 22, fill: `hsla(${hu},40%,85%,0.08)`, filter: `url(#db${id})` }),
         // Column faces
         h("polygon", { points: "10,120 10,40 24,32 24,120", fill: `hsla(${hu},${Math.min(s+18,100)}%,92%,0.7)` }),
-        h("polygon", { points: "24,120 24,32 50,36 50,120", fill: `hsla(${hu+8},${s}%,60%,0.42)` }),
-        h("polygon", { points: "50,120 50,36 60,44 60,120", fill: `hsla(${hu+22},${s-8}%,18%,0.6)` }),
+        h("polygon", { points: "24,120 24,32 50,36 50,120", fill: `hsla(${hu+8},${s}%,60%,0.72)` }),
+        h("polygon", { points: "50,120 50,36 60,44 60,120", fill: `hsla(${hu+22},${s-8}%,18%,0.90)` }),
         // Top point
         h("polygon", { points: "10,40 24,32 34,5", fill: `hsla(${hu},${s+10}%,95%,0.88)` }),
-        h("polygon", { points: "24,32 50,36 34,5", fill: `hsla(${hu+5},${s}%,78%,0.6)` }),
-        h("polygon", { points: "50,36 60,44 34,5", fill: `hsla(${hu+22},${s-8}%,20%,0.55)` }),
+        h("polygon", { points: "24,32 50,36 34,5", fill: `hsla(${hu+5},${s}%,78%,0.90)` }),
+        h("polygon", { points: "50,36 60,44 34,5", fill: `hsla(${hu+22},${s-8}%,20%,0.85)` }),
         // Bottom point
-        h("polygon", { points: "10,120 24,120 34,155", fill: `hsla(${hu},${s+5}%,88%,0.65)` }),
-        h("polygon", { points: "24,120 50,120 34,155", fill: `hsla(${hu+10},${s-5}%,50%,0.4)` }),
-        h("polygon", { points: "50,120 60,120 34,155", fill: `hsla(${hu+22},${s-10}%,14%,0.55)` }),
+        h("polygon", { points: "10,120 24,120 34,155", fill: `hsla(${hu},${s+5}%,88%,0.95)` }),
+        h("polygon", { points: "24,120 50,120 34,155", fill: `hsla(${hu+10},${s-5}%,50%,0.70)` }),
+        h("polygon", { points: "50,120 60,120 34,155", fill: `hsla(${hu+22},${s-10}%,14%,0.85)` }),
         // Edges
         h("line", { x1: 24, y1: 120, x2: 24, y2: 32, stroke: "white", strokeWidth: 1.1, opacity: 0.7 }),
         h("line", { x1: 24, y1: 120, x2: 24, y2: 32, stroke: `hsla(${hu},55%,92%,0.3)`, strokeWidth: 3.5, filter: `url(#db2${id})` }),
@@ -308,16 +311,14 @@
           h("filter", { id: `tb3${id}` }, h("feGaussianBlur", { stdDeviation: "3.5" })),
         ),
         h("ellipse", { cx: 50, cy: 50, rx: 40, ry: 30, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#tb3${id})` }),
-        // Opaque body
-        h("polygon", { points: "8,65 8,25 50,5 95,28 95,65", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Wide flat faces — very glassy/translucent
         h("polygon", { points: "8,65 8,25 42,10 42,65", fill: `hsla(${hu},${Math.min(s+15,100)}%,92%,0.6)` }),
-        h("polygon", { points: "42,65 42,10 85,18 85,65", fill: `hsla(${hu+8},${s+5}%,62%,0.35)` }),
-        h("polygon", { points: "85,65 85,18 95,28 95,65", fill: `hsla(${hu+20},${s-5}%,20%,0.55)` }),
+        h("polygon", { points: "42,65 42,10 85,18 85,65", fill: `hsla(${hu+8},${s+5}%,62%,0.65)` }),
+        h("polygon", { points: "85,65 85,18 95,28 95,65", fill: `hsla(${hu+20},${s-5}%,20%,0.85)` }),
         // Top facets (shallow termination)
         h("polygon", { points: "8,25 42,10 50,5", fill: `hsla(${hu},${s+12}%,96%,0.85)` }),
-        h("polygon", { points: "42,10 85,18 50,5", fill: `hsla(${hu+5},${s}%,80%,0.55)` }),
-        h("polygon", { points: "85,18 95,28 50,5", fill: `hsla(${hu+20},${s-5}%,25%,0.5)` }),
+        h("polygon", { points: "42,10 85,18 50,5", fill: `hsla(${hu+5},${s}%,80%,0.85)` }),
+        h("polygon", { points: "85,18 95,28 50,5", fill: `hsla(${hu+20},${s-5}%,25%,0.80)` }),
         // Internal refraction — a rainbow bar visible through the flat face
         h("rect", { x: 15, y: 30, width: 30, height: 3, rx: 1.5, fill: `hsla(${(hu+120)%360},40%,80%,0.08)`, filter: `url(#tb${id})` }),
         h("rect", { x: 20, y: 45, width: 25, height: 2, rx: 1, fill: `hsla(${(hu+240)%360},35%,82%,0.06)`, filter: `url(#tb${id})` }),
@@ -359,20 +360,17 @@
           h("filter", { id: `cb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 50, cy: 85, rx: 35, ry: 50, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#cb3${id})` }),
-        // Opaque body (main + secondary crystal silhouette)
-        h("polygon", { points: "8,125 8,42 30,6 50,44 50,125", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
-        h("polygon", { points: "42,55 42,51 62,33 82,56 82,130 42,130", fill: `hsla(${hu+15},${Math.max(s,55)}%,32%,0.88)` }),
         // ─ Main crystal (left, tallest)
         // Internals
         h("polygon", { points: "14,120 14,48 22,42 22,120", fill: `hsla(${hu},50%,88%,0.1)`, filter: `url(#cb${id})` }),
         // Faces
         h("polygon", { points: "8,125 8,42 22,34 22,125", fill: `hsla(${hu},${Math.min(s+18,100)}%,92%,0.68)` }),
-        h("polygon", { points: "22,125 22,34 42,38 42,125", fill: `hsla(${hu+8},${s}%,60%,0.4)` }),
-        h("polygon", { points: "42,125 42,38 50,44 50,125", fill: `hsla(${hu+22},${s-8}%,18%,0.58)` }),
+        h("polygon", { points: "22,125 22,34 42,38 42,125", fill: `hsla(${hu+8},${s}%,60%,0.70)` }),
+        h("polygon", { points: "42,125 42,38 50,44 50,125", fill: `hsla(${hu+22},${s-8}%,18%,0.88)` }),
         // Point
         h("polygon", { points: "8,42 22,34 30,6", fill: `hsla(${hu},${s+10}%,95%,0.88)` }),
-        h("polygon", { points: "22,34 42,38 30,6", fill: `hsla(${hu+5},${s}%,78%,0.6)` }),
-        h("polygon", { points: "42,38 50,44 30,6", fill: `hsla(${hu+22},${s-8}%,20%,0.5)` }),
+        h("polygon", { points: "22,34 42,38 30,6", fill: `hsla(${hu+5},${s}%,78%,0.90)` }),
+        h("polygon", { points: "42,38 50,44 30,6", fill: `hsla(${hu+22},${s-8}%,20%,0.80)` }),
         // Edges
         h("line", { x1: 22, y1: 125, x2: 22, y2: 34, stroke: "white", strokeWidth: 1, opacity: 0.65 }),
         h("line", { x1: 22, y1: 125, x2: 22, y2: 34, stroke: `hsla(${hu},55%,92%,0.25)`, strokeWidth: 3, filter: `url(#cb2${id})` }),
@@ -390,11 +388,11 @@
         h("g", { transform: "translate(38, 25) rotate(8)" },
           h("polygon", { points: "10,100 10,38 22,32 22,100", fill: `hsla(${hu2},50%,88%,0.1)`, filter: `url(#cb${id})` }),
           h("polygon", { points: "4,105 4,34 18,26 18,105", fill: `hsla(${hu2},${Math.min(s+15,100)}%,90%,0.62)` }),
-          h("polygon", { points: "18,105 18,26 36,30 36,105", fill: `hsla(${hu2+8},${s-5}%,58%,0.38)` }),
-          h("polygon", { points: "36,105 36,30 44,38 44,105", fill: `hsla(${hu2+20},${s-10}%,16%,0.55)` }),
+          h("polygon", { points: "18,105 18,26 36,30 36,105", fill: `hsla(${hu2+8},${s-5}%,58%,0.68)` }),
+          h("polygon", { points: "36,105 36,30 44,38 44,105", fill: `hsla(${hu2+20},${s-10}%,16%,0.85)` }),
           h("polygon", { points: "4,34 18,26 24,8", fill: `hsla(${hu2},${s+8}%,94%,0.85)` }),
-          h("polygon", { points: "18,26 36,30 24,8", fill: `hsla(${hu2+5},${s}%,75%,0.55)` }),
-          h("polygon", { points: "36,30 44,38 24,8", fill: `hsla(${hu2+20},${s-8}%,20%,0.5)` }),
+          h("polygon", { points: "18,26 36,30 24,8", fill: `hsla(${hu2+5},${s}%,75%,0.85)` }),
+          h("polygon", { points: "36,30 44,38 24,8", fill: `hsla(${hu2+20},${s-8}%,20%,0.80)` }),
           h("line", { x1: 18, y1: 105, x2: 18, y2: 26, stroke: "white", strokeWidth: 0.9, opacity: 0.6 }),
           h("line", { x1: 18, y1: 26, x2: 24, y2: 8, stroke: "white", strokeWidth: 0.8, opacity: 0.75 }),
           h("polygon", { className: "crystal-sweep", points: "8,38 19,26 21,14 12,34", fill: "white", opacity: 0.55 }),
@@ -407,9 +405,9 @@
         // ─ Tiny third crystal peeking out
         h("g", { transform: "translate(28, 55) rotate(-12)" },
           h("polygon", { points: "2,55 2,18 10,14 10,55", fill: `hsla(${hu-10},${Math.min(s+12,100)}%,88%,0.55)` }),
-          h("polygon", { points: "10,55 10,14 18,16 18,55", fill: `hsla(${hu},${s-5}%,55%,0.32)` }),
+          h("polygon", { points: "10,55 10,14 18,16 18,55", fill: `hsla(${hu},${s-5}%,55%,0.62)` }),
           h("polygon", { points: "2,18 10,14 8,2", fill: `hsla(${hu-10},${s+8}%,95%,0.8)` }),
-          h("polygon", { points: "10,14 18,16 8,2", fill: `hsla(${hu},${s}%,70%,0.5)` }),
+          h("polygon", { points: "10,14 18,16 8,2", fill: `hsla(${hu},${s}%,70%,0.80)` }),
           h("line", { x1: 10, y1: 55, x2: 10, y2: 14, stroke: "white", strokeWidth: 0.6, opacity: 0.5 }),
           h("line", { x1: 10, y1: 14, x2: 8, y2: 2, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
           h("circle", { cx: 7, cy: 4, r: 1.5, fill: "white", opacity: 0.6 }),
@@ -438,14 +436,12 @@
           h("filter", { id: `fb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 40, cy: 48, rx: 30, ry: 30, fill: `hsla(${hu},50%,55%,0.06)`, filter: `url(#fb3${id})` }),
-        // Opaque body
-        h("polygon", { points: "40,10 72,28 72,64 40,82 8,64 8,28", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Top face (brightest)
         h("polygon", { points: "40,10 72,28 40,46 8,28", fill: `hsla(${hu},${Math.min(s+20,100)}%,90%,0.7)` }),
         // Left face
         h("polygon", { points: "8,28 40,46 40,82 8,64", fill: `hsla(${hu+5},${Math.min(s+10,100)}%,75%,0.6)` }),
         // Right face (darkest)
-        h("polygon", { points: "40,46 72,28 72,64 40,82", fill: `hsla(${hu+15},${s-5}%,35%,0.5)` }),
+        h("polygon", { points: "40,46 72,28 72,64 40,82", fill: `hsla(${hu+15},${s-5}%,35%,0.80)` }),
         // Internal depth
         h("polygon", { points: "24,37 40,28 40,55 24,46", fill: `hsla(${hu},50%,88%,0.12)`, filter: `url(#fb${id})` }),
         // Edges
@@ -488,24 +484,22 @@
           h("filter", { id: `td3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 30, cy: 55, rx: 22, ry: 38, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#td3${id})` }),
-        // Opaque body
-        h("polygon", { points: "30,4 8,35 6,60 12,82 30,94 48,82 54,60 52,35", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Upper left: T → L1 → C (bright, lit)
         h("polygon", { points: "30,4 8,35 30,50", fill: `hsla(${hu},${Math.min(s+18,100)}%,92%,0.72)` }),
         // Upper right: T → C → R1 (medium)
-        h("polygon", { points: "30,4 30,50 52,35", fill: `hsla(${hu+8},${s}%,62%,0.48)` }),
+        h("polygon", { points: "30,4 30,50 52,35", fill: `hsla(${hu+8},${s}%,62%,0.78)` }),
         // Left mid: L1 → L2 → C
-        h("polygon", { points: "8,35 6,60 30,50", fill: `hsla(${hu+5},${s+5}%,82%,0.58)` }),
+        h("polygon", { points: "8,35 6,60 30,50", fill: `hsla(${hu+5},${s+5}%,82%,0.88)` }),
         // Right mid: R1 → C → R2
-        h("polygon", { points: "52,35 30,50 54,60", fill: `hsla(${hu+15},${s-5}%,40%,0.48)` }),
+        h("polygon", { points: "52,35 30,50 54,60", fill: `hsla(${hu+15},${s-5}%,40%,0.78)` }),
         // Lower left: L2 → L3 → C
-        h("polygon", { points: "6,60 12,82 30,50", fill: `hsla(${hu+10},${s}%,68%,0.5)` }),
+        h("polygon", { points: "6,60 12,82 30,50", fill: `hsla(${hu+10},${s}%,68%,0.80)` }),
         // Lower right: R2 → C → R3
-        h("polygon", { points: "54,60 30,50 48,82", fill: `hsla(${hu+22},${s-8}%,28%,0.52)` }),
+        h("polygon", { points: "54,60 30,50 48,82", fill: `hsla(${hu+22},${s-8}%,28%,0.82)` }),
         // Bottom left: L3 → B → C
-        h("polygon", { points: "12,82 30,94 30,50", fill: `hsla(${hu+8},${s-3}%,58%,0.45)` }),
+        h("polygon", { points: "12,82 30,94 30,50", fill: `hsla(${hu+8},${s-3}%,58%,0.75)` }),
         // Bottom right: R3 → C → B
-        h("polygon", { points: "48,82 30,50 30,94", fill: `hsla(${hu+18},${s-5}%,35%,0.42)` }),
+        h("polygon", { points: "48,82 30,50 30,94", fill: `hsla(${hu+18},${s-5}%,35%,0.72)` }),
         // Internal depth
         h("polygon", { points: "22,30 38,30 34,58 26,58", fill: `hsla(${hu},50%,88%,0.12)`, filter: `url(#td${id})` }),
         // Facet edges (all from center out)
@@ -552,12 +546,10 @@
           h("filter", { id: `ob3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("rect", { x: 6, y: 6, width: 78, height: 58, rx: 0, fill: `hsla(${hu},50%,55%,0.05)`, filter: `url(#ob3${id})` }),
-        // Opaque body
-        h("polygon", { points: "10,5 80,5 85,10 85,60 80,65 10,65 5,60 5,10", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Outer step — beveled rectangle
-        h("polygon", { points: "10,5 80,5 85,10 85,60 80,65 10,65 5,60 5,10", fill: `hsla(${hu+10},${s-5}%,35%,0.45)` }),
+        h("polygon", { points: "10,5 80,5 85,10 85,60 80,65 10,65 5,60 5,10", fill: `hsla(${hu+10},${s-5}%,35%,0.75)` }),
         // Step 1
-        h("polygon", { points: "16,10 74,10 78,14 78,56 74,60 16,60 12,56 12,14", fill: `hsla(${hu+5},${s}%,55%,0.4)` }),
+        h("polygon", { points: "16,10 74,10 78,14 78,56 74,60 16,60 12,56 12,14", fill: `hsla(${hu+5},${s}%,55%,0.70)` }),
         // Step 2
         h("polygon", { points: "22,15 68,15 72,19 72,51 68,55 22,55 18,51 18,19", fill: `hsla(${hu},${Math.min(s+10,100)}%,72%,0.5)` }),
         // Table (center, brightest)
@@ -603,14 +595,14 @@
           h("filter", { id: `chb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 45, cy: 42, rx: 35, ry: 28, fill: `hsla(${hu},50%,55%,0.06)`, filter: `url(#chb3${id})` }),
-        // Irregular outer shape — rough rock (opaque body)
-        h("polygon", { points: "15,70 5,45 12,20 30,8 55,5 75,15 85,35 80,60 65,72 40,75", fill: `hsla(${hu+10},${Math.max(s,50)}%,28%,0.92)` }),
+        // Irregular outer shape — rough rock
+        h("polygon", { points: "15,70 5,45 12,20 30,8 55,5 75,15 85,35 80,60 65,72 40,75", fill: `hsla(${hu+10},${s+10}%,25%,0.9)` }),
         // Lighter face
-        h("polygon", { points: "12,20 30,8 55,5 50,30 25,35", fill: `hsla(${hu},${s}%,65%,0.45)` }),
+        h("polygon", { points: "12,20 30,8 55,5 50,30 25,35", fill: `hsla(${hu},${s}%,65%,0.75)` }),
         // Crystal face exposed inside
         h("polygon", { points: "25,35 50,30 60,45 45,55 28,50", fill: `hsla(${hu},${Math.min(s+15,100)}%,85%,0.65)` }),
-        h("polygon", { points: "50,30 75,15 70,40 60,45", fill: `hsla(${hu+8},${s+5}%,72%,0.5)` }),
-        h("polygon", { points: "60,45 70,40 80,60 65,55", fill: `hsla(${hu+18},${s-5}%,40%,0.45)` }),
+        h("polygon", { points: "50,30 75,15 70,40 60,45", fill: `hsla(${hu+8},${s+5}%,72%,0.80)` }),
+        h("polygon", { points: "60,45 70,40 80,60 65,55", fill: `hsla(${hu+18},${s-5}%,40%,0.75)` }),
         // Internal glow from crystal face
         h("polygon", { points: "30,38 48,33 55,44 42,50 32,46", fill: `hsla(${hu},${s+10}%,90%,0.2)`, filter: `url(#chb${id})` }),
         // Edges on crystal face
@@ -644,16 +636,14 @@
           h("filter", { id: `di3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 35, cy: 45, rx: 25, ry: 35, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#di3${id})` }),
-        // Opaque body
-        h("polygon", { points: "35,3 8,42 35,88 62,42", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Top pyramid
         h("polygon", { points: "35,3 8,42 35,48", fill: `hsla(${hu},${Math.min(s+20,100)}%,93%,0.75)` }),
-        h("polygon", { points: "35,3 35,48 62,42", fill: `hsla(${hu+8},${s}%,65%,0.45)` }),
+        h("polygon", { points: "35,3 35,48 62,42", fill: `hsla(${hu+8},${s}%,65%,0.75)` }),
         // Right dark sliver
-        h("polygon", { points: "35,3 62,42 58,38", fill: `hsla(${hu+20},${s-8}%,25%,0.5)` }),
+        h("polygon", { points: "35,3 62,42 58,38", fill: `hsla(${hu+20},${s-8}%,25%,0.80)` }),
         // Bottom pyramid (inverted)
-        h("polygon", { points: "35,88 8,42 35,48", fill: `hsla(${hu+5},${s+5}%,78%,0.55)` }),
-        h("polygon", { points: "35,88 35,48 62,42", fill: `hsla(${hu+18},${s-5}%,35%,0.5)` }),
+        h("polygon", { points: "35,88 8,42 35,48", fill: `hsla(${hu+5},${s+5}%,78%,0.85)` }),
+        h("polygon", { points: "35,88 35,48 62,42", fill: `hsla(${hu+18},${s-5}%,35%,0.80)` }),
         // Internal depth
         h("polygon", { points: "20,42 35,20 35,65 20,48", fill: `hsla(${hu},50%,88%,0.1)`, filter: `url(#di${id})` }),
         // Center edge
@@ -723,13 +713,13 @@
           stones.push({
             top, left,
             scale: cls.scaleMin + rand() * (cls.scaleMax - cls.scaleMin),
-            rotation: -60 + rand() * 120, // wider range ±60°
+            rotation: -20 + rand() * 40, // ±20° — upright with natural variation
             opacity: cls.opacityMin + rand() * (cls.opacityMax - cls.opacityMin),
             hsl: hexToHsl(color),
             shape: Math.floor(rand() * SHAPES.length),
             flip: rand() > 0.5,
             breatheDelay: -rand() * 5,
-            tiltAmp: 8 + rand() * 14, // 8–22° — visible tilt as crystal passes light
+            tiltAmp: 6 + rand() * 10, // 6–16° — visible but not extreme
             tiltAxis: Math.floor(rand() * 3), // 0=Y, 1=X, 2=diagonal
           });
         }
@@ -789,7 +779,7 @@
         return () => window.removeEventListener("scroll", onScroll);
       }, [lightPosition]);
 
-      return h("div", { ref, "aria-hidden": true, style: { position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", perspective: "600px" } },
+      return h("div", { ref, "aria-hidden": true, style: { position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" } },
         stones.map((s, i) => {
           const [hu, sat, l] = s.hsl;
           const shape = SHAPES[s.shape];
@@ -797,27 +787,25 @@
           const baseH = 110;
           const baseW = baseH * (shape.w / shape.h);
           const sx = s.flip ? -s.scale : s.scale;
-          const tilt = s.tiltAxis === 2
-            ? `rotate3d(1,1,0,calc(var(--glint-s, 0) * ${s.tiltAmp}deg))`
-            : `${s.tiltAxis === 0 ? "rotateY" : "rotateX"}(calc(var(--glint-s, 0) * ${s.tiltAmp}deg))`;
           return h("div", {
             key: i, "data-crystal": true, className: "crystal-container",
             style: {
               position: "absolute", top: s.top+"%", left: s.left+"%",
-              transform: `${tilt} rotate(${s.rotation}deg) scale(${sx}, ${s.scale})`,
+              transform: `rotate(${s.rotation}deg) scale(${sx}, ${s.scale})`,
               opacity: s.opacity * intensity,
               width: baseW+"px", height: baseH+"px",
               "--glint-hue": hu,
               "--breathe-delay": s.breatheDelay + "s",
             }
-          }, shape.fn(hu, Math.max(sat, 15), l));
+          }, h("div", { className: "crystal-spin", style: { width: "100%", height: "100%" } },
+            shape.fn(hu, Math.max(sat, 15), l)));
         })
       );
     }
 
     function App() {
       return h("div", { style: { position: "relative", minHeight: "400vh" } },
-        h(Crystals, { count: 45, seed: 99 }),
+        h(Crystals, { count: 60, seed: 99 }),
       );
     }
 
