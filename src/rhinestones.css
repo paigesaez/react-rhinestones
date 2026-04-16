@@ -1,31 +1,20 @@
-/* Rhinestones — scroll-driven glint + idle shimmer.
-   The glint highlight is driven by JS (scroll position), but
-   the base stone gets a subtle shimmer to feel alive at rest. */
-
-.rhinestone-glint {
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+/* Crystal glint animation targets */
+.crystal-glint {
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
   transform-origin: center;
 }
 
-@keyframes shimmer {
-  0%, 100% {
-    filter: brightness(1) saturate(1);
-  }
-  50% {
-    filter: brightness(1.06) saturate(1.1);
-  }
+/* Idle shimmer */
+@keyframes crystal-breathe {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.08); }
 }
 
-.rhinestone-stone {
-  animation: shimmer 5s ease-in-out infinite;
-  will-change: filter;
+.crystal-gem {
+  animation: crystal-breathe 5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rhinestone-stone {
-    animation: none;
-  }
-  .rhinestone-glint {
-    transition: none;
-  }
+  .crystal-gem { animation: none; }
+  .crystal-glint { transition: none; }
 }
