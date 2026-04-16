@@ -41,14 +41,13 @@
       animation: crystal-float 5s ease-in-out infinite;
       animation-delay: var(--breathe-delay, 0s);
     }
-    .crystal-container {
-      pointer-events: auto;
-      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease-out;
+    .crystal-container { pointer-events: auto; }
+    .crystal-gem {
+      transition: transform 0.5s ease-out, filter 0.4s ease-out;
     }
-    .crystal-container:hover {
-      transform: translateY(4px) scale(1.04) !important;
-      filter: brightness(1.2)
-        drop-shadow(0 0 12px hsla(var(--glint-hue, 260), 55%, 65%, 0.45)) !important;
+    .crystal-container:hover .crystal-gem {
+      transform: translateY(3px) scale(1.03);
+      filter: brightness(1.25) drop-shadow(0 0 10px hsla(var(--glint-hue, 260), 55%, 65%, 0.45));
     }
     .crystal-container { pointer-events: auto; }
     .crystal-spin {
@@ -189,41 +188,34 @@
       );
     }
 
-    // ─── Shape 2: Slender needle / prismatic wand ───
-    function CrystalNeedle(hu, s, l) {
+    // ─── Shape 2: Wedge — asymmetric thick slab, flat-topped ───
+    function CrystalWedge(hu, s, l) {
       const id = uid();
-      return h("svg", { viewBox: "0 0 36 160", className: "crystal-gem" },
+      return h("svg", { viewBox: "0 0 70 130", className: "crystal-gem" },
         h("defs", null,
-          h("filter", { id: `nb${id}` }, h("feGaussianBlur", { stdDeviation: "2" })),
-          h("filter", { id: `nb2${id}` }, h("feGaussianBlur", { stdDeviation: "0.8" })),
-          h("filter", { id: `nb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
+          h("filter", { id: `wd${id}` }, h("feGaussianBlur", { stdDeviation: "2" })),
+          h("filter", { id: `wd2${id}` }, h("feGaussianBlur", { stdDeviation: "0.8" })),
         ),
-        h("ellipse", { cx: 18, cy: 80, rx: 14, ry: 60, fill: `hsla(${hu},55%,60%,0.06)`, filter: `url(#nb3${id})` }),
-        // Internals
-        h("polygon", { points: "9,140 9,38 14,30 14,140", fill: `hsla(${hu},55%,88%,0.1)`, filter: `url(#nb${id})` }),
-        // Faces — glassy
-        h("polygon", { points: "5,145 5,32 14,24 14,145", fill: `hsla(${hu},${Math.min(s+20,100)}%,90%,0.7)` }),
-        h("polygon", { points: "14,145 14,24 26,28 26,145", fill: `hsla(${hu+8},${s}%,58%,0.75)` }),
-        h("polygon", { points: "26,145 26,28 31,35 31,145", fill: `hsla(${hu+22},${Math.max(s-8,10)}%,18%,0.95)` }),
-        // Point
-        h("polygon", { points: "5,32 14,24 18,2", fill: `hsla(${hu},${s+10}%,95%,0.9)` }),
-        h("polygon", { points: "14,24 26,28 18,2", fill: `hsla(${hu+5},${s}%,75%,0.95)` }),
-        h("polygon", { points: "26,28 31,35 18,2", fill: `hsla(${hu+20},${Math.max(s-5,10)}%,22%,0.90)` }),
+        // Thick asymmetric wedge — flat angled top, not a point
+        h("polygon", { points: "8,125 5,45 15,12 40,5 45,30 45,125", fill: `hsla(${hu},${Math.min(s+18,100)}%,88%,0.75)` }),
+        h("polygon", { points: "45,125 45,30 40,5 62,18 60,125", fill: `hsla(${hu+10},${s}%,55%,0.65)` }),
+        // Flat angled top face
+        h("polygon", { points: "15,12 40,5 62,18 45,30 5,45", fill: `hsla(${hu+5},${s+8}%,78%,0.85)` }),
+        // Dark side sliver
+        h("polygon", { points: "60,125 62,18 65,25 65,125", fill: `hsla(${hu+20},${Math.max(s-8,10)}%,18%,0.85)` }),
         // Edges
-        h("line", { x1: 14, y1: 145, x2: 14, y2: 24, stroke: "white", strokeWidth: 1, opacity: 0.7 }),
-        h("line", { x1: 14, y1: 145, x2: 14, y2: 24, stroke: `hsla(${hu},55%,92%,0.3)`, strokeWidth: 3, filter: `url(#nb2${id})` }),
-        h("line", { x1: 14, y1: 24, x2: 18, y2: 2, stroke: "white", strokeWidth: 0.9, opacity: 0.85 }),
-        h("line", { x1: 5, y1: 32, x2: 18, y2: 2, stroke: "white", strokeWidth: 0.5, opacity: 0.5 }),
-        // Specular streak (counter-sweep: slides as crystal passes the light)
-        h("polygon", { className: "crystal-counter-sweep", points: "7,35 15,24 15,70 7,75", fill: "white", opacity: 0.15, filter: `url(#nb2${id})` }),
-        // Tip
-        h("circle", { cx: 17, cy: 5, r: 1.5, fill: "white", opacity: 0.6 }),
-        h("circle", { cx: 17, cy: 5, r: 6, fill: "white", opacity: 0.3, filter: `url(#nb${id})` }),
-        h("line", { x1: 17, y1: -3, x2: 17, y2: 13, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
-        h("line", { x1: 10, y1: 5, x2: 24, y2: 5, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
-        // Prismatic
-        h("line", { x1: 15, y1: 24, x2: 19, y2: 2, stroke: `hsla(280,50%,82%,0.15)`, strokeWidth: 1.5, filter: `url(#nb2${id})` }),
-        h("circle", { cx: 14, cy: 22, r: 4, fill: "white", opacity: 0, className: "crystal-glint" }),
+        h("line", { x1: 45, y1: 125, x2: 45, y2: 30, stroke: "white", strokeWidth: 0.8, opacity: 0.6 }),
+        h("line", { x1: 5, y1: 45, x2: 15, y2: 12, stroke: "white", strokeWidth: 0.7, opacity: 0.55 }),
+        h("line", { x1: 15, y1: 12, x2: 40, y2: 5, stroke: "white", strokeWidth: 0.6, opacity: 0.7 }),
+        h("line", { x1: 40, y1: 5, x2: 62, y2: 18, stroke: "white", strokeWidth: 0.5, opacity: 0.45 }),
+        h("line", { x1: 45, y1: 30, x2: 5, y2: 45, stroke: "white", strokeWidth: 0.5, opacity: 0.4 }),
+        // Sweep on top face
+        h("polygon", { className: "crystal-sweep", points: "18,15 38,7 42,18 12,38", fill: "white", opacity: 0.5 }),
+        h("polygon", { className: "crystal-sweep", points: "20,18 36,9 40,16 14,34", fill: "white", opacity: 0.2, filter: `url(#wd2${id})` }),
+        // Glow at high point
+        h("circle", { cx: 38, cy: 8, r: 1.5, fill: "white", opacity: 0.6 }),
+        h("circle", { cx: 38, cy: 8, r: 5, fill: "white", opacity: 0.2, filter: `url(#wd${id})` }),
+        h("circle", { cx: 30, cy: 25, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
 
@@ -538,57 +530,81 @@
       );
     }
 
-    // ─── Shape 9: Blade / kyanite — flat elongated shard ───
-    function CrystalBlade(hu, s, l) {
+    // ─── Shape 9: Bent — crystal changes direction midway, like a knee ───
+    function CrystalBent(hu, s, l) {
       const id = uid();
-      return h("svg", { viewBox: "0 0 40 170", className: "crystal-gem" },
+      return h("svg", { viewBox: "0 0 90 160", className: "crystal-gem" },
         h("defs", null,
-          h("filter", { id: `bl${id}` }, h("feGaussianBlur", { stdDeviation: "2" })),
-          h("filter", { id: `bl2${id}` }, h("feGaussianBlur", { stdDeviation: "0.8" })),
+          h("filter", { id: `bn${id}` }, h("feGaussianBlur", { stdDeviation: "2" })),
+          h("filter", { id: `bn2${id}` }, h("feGaussianBlur", { stdDeviation: "0.8" })),
         ),
-        // Flat blade — two main faces
-        h("polygon", { points: "8,155 4,40 20,4 22,40 22,155", fill: `hsla(${hu},${Math.min(s+18,100)}%,88%,0.75)` }),
-        h("polygon", { points: "22,155 22,40 20,4 36,40 32,155", fill: `hsla(${hu+10},${s}%,55%,0.65)` }),
-        // Thin dark edge
-        h("polygon", { points: "4,40 20,4 36,40", fill: `hsla(${hu+5},${s+8}%,78%,0.85)` }),
+        // Lower segment — angled left
+        h("polygon", { points: "25,155 20,80 35,72 40,155", fill: `hsla(${hu},${Math.min(s+18,100)}%,88%,0.72)` }),
+        h("polygon", { points: "40,155 35,72 55,78 52,155", fill: `hsla(${hu+10},${s}%,52%,0.65)` }),
+        // Upper segment — angled right from the bend
+        h("polygon", { points: "20,80 35,72 55,8 42,5", fill: `hsla(${hu},${Math.min(s+15,100)}%,85%,0.78)` }),
+        h("polygon", { points: "35,72 55,78 72,22 55,8", fill: `hsla(${hu+12},${s}%,48%,0.62)` }),
+        // Dark right edge on upper
+        h("polygon", { points: "55,78 72,22 78,28 60,82", fill: `hsla(${hu+22},${Math.max(s-8,10)}%,20%,0.8)` }),
+        // Tip facets
+        h("polygon", { points: "42,5 55,8 52,2", fill: `hsla(${hu},${s+10}%,94%,0.9)` }),
+        h("polygon", { points: "55,8 72,22 62,12", fill: `hsla(${hu+8},${s}%,65%,0.7)` }),
+        // Bend junction face
+        h("polygon", { points: "20,80 35,72 55,78", fill: `hsla(${hu+5},${s+5}%,72%,0.7)` }),
         // Edges
-        h("line", { x1: 22, y1: 155, x2: 22, y2: 40, stroke: "white", strokeWidth: 0.8, opacity: 0.6 }),
-        h("line", { x1: 22, y1: 40, x2: 20, y2: 4, stroke: "white", strokeWidth: 0.7, opacity: 0.75 }),
-        h("line", { x1: 4, y1: 40, x2: 20, y2: 4, stroke: "white", strokeWidth: 0.5, opacity: 0.45 }),
-        // Sweep
-        h("polygon", { className: "crystal-sweep", points: "10,45 20,8 22,45 12,80", fill: "white", opacity: 0.5 }),
-        // Tip
-        h("circle", { cx: 20, cy: 6, r: 1.5, fill: "white", opacity: 0.6 }),
-        h("circle", { cx: 20, cy: 6, r: 5, fill: "white", opacity: 0.25, filter: `url(#bl${id})` }),
-        h("line", { x1: 20, y1: 0, x2: 20, y2: 12, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
-        h("circle", { cx: 20, cy: 40, r: 4, fill: "white", opacity: 0, className: "crystal-glint" }),
+        h("line", { x1: 35, y1: 72, x2: 55, y2: 8, stroke: "white", strokeWidth: 0.8, opacity: 0.65 }),
+        h("line", { x1: 20, y1: 80, x2: 42, y2: 5, stroke: "white", strokeWidth: 0.6, opacity: 0.5 }),
+        h("line", { x1: 35, y1: 72, x2: 20, y2: 80, stroke: "white", strokeWidth: 0.7, opacity: 0.55 }),
+        h("line", { x1: 55, y1: 78, x2: 72, y2: 22, stroke: "white", strokeWidth: 0.5, opacity: 0.4 }),
+        // Sweep on upper lit face
+        h("polygon", { className: "crystal-sweep", points: "28,72 40,50 50,12 45,8", fill: "white", opacity: 0.45 }),
+        // Tip glow
+        h("circle", { cx: 52, cy: 5, r: 1.5, fill: "white", opacity: 0.6 }),
+        h("circle", { cx: 52, cy: 5, r: 5, fill: "white", opacity: 0.2, filter: `url(#bn${id})` }),
+        h("circle", { cx: 42, cy: 40, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
 
-    // ─── Shape 10: Spire — very thin, tall, multifaceted ───
-    function CrystalSpire(hu, s, l) {
+    // ─── Shape 10: Tower — stepped terraces getting narrower, like bismuth ───
+    function CrystalTower(hu, s, l) {
       const id = uid();
-      return h("svg", { viewBox: "0 0 30 180", className: "crystal-gem" },
+      return h("svg", { viewBox: "0 0 80 160", className: "crystal-gem" },
         h("defs", null,
-          h("filter", { id: `sp${id}` }, h("feGaussianBlur", { stdDeviation: "1.5" })),
-          h("filter", { id: `sp2${id}` }, h("feGaussianBlur", { stdDeviation: "0.6" })),
+          h("filter", { id: `tw${id}` }, h("feGaussianBlur", { stdDeviation: "2" })),
+          h("filter", { id: `tw2${id}` }, h("feGaussianBlur", { stdDeviation: "0.8" })),
         ),
-        // 4 narrow faces
-        h("polygon", { points: "6,165 4,45 15,2 15,165", fill: `hsla(${hu},${Math.min(s+20,100)}%,90%,0.72)` }),
-        h("polygon", { points: "15,165 15,2 26,45 24,165", fill: `hsla(${hu+12},${s}%,52%,0.6)` }),
-        h("polygon", { points: "4,45 15,2 10,42", fill: `hsla(${hu},${s+10}%,95%,0.9)` }),
-        h("polygon", { points: "15,2 26,45 20,42", fill: `hsla(${hu+8},${s}%,68%,0.7)` }),
-        // Internal streak
-        h("line", { x1: 12, y1: 50, x2: 14, y2: 140, stroke: `hsla(${hu},50%,85%,0.1)`, strokeWidth: 2, filter: `url(#sp${id})` }),
-        // Edges
-        h("line", { x1: 15, y1: 165, x2: 15, y2: 2, stroke: "white", strokeWidth: 0.7, opacity: 0.65 }),
-        h("line", { x1: 4, y1: 45, x2: 15, y2: 2, stroke: "white", strokeWidth: 0.5, opacity: 0.5 }),
-        // Sweep
-        h("polygon", { className: "crystal-sweep", points: "7,48 15,5 15,50 9,80", fill: "white", opacity: 0.45 }),
+        // Bottom tier — widest
+        h("polygon", { points: "5,155 5,105 30,100 30,155", fill: `hsla(${hu},${Math.min(s+18,100)}%,85%,0.72)` }),
+        h("polygon", { points: "30,155 30,100 65,105 65,155", fill: `hsla(${hu+10},${s}%,52%,0.65)` }),
+        h("polygon", { points: "65,155 65,105 72,110 72,155", fill: `hsla(${hu+20},${Math.max(s-8,10)}%,20%,0.8)` }),
+        // Step face
+        h("polygon", { points: "5,105 30,100 65,105 72,110", fill: `hsla(${hu+5},${s+5}%,72%,0.7)` }),
+        // Middle tier
+        h("polygon", { points: "12,105 12,62 35,58 35,100", fill: `hsla(${hu+2},${Math.min(s+20,100)}%,88%,0.75)` }),
+        h("polygon", { points: "35,100 35,58 58,62 58,105", fill: `hsla(${hu+12},${s}%,50%,0.68)` }),
+        h("polygon", { points: "58,105 58,62 64,66 64,108", fill: `hsla(${hu+22},${Math.max(s-5,10)}%,22%,0.78)` }),
+        // Step face
+        h("polygon", { points: "12,62 35,58 58,62 64,66", fill: `hsla(${hu+3},${s+8}%,78%,0.72)` }),
+        // Top tier — narrowest, with point
+        h("polygon", { points: "18,62 18,28 38,8 38,58", fill: `hsla(${hu},${Math.min(s+22,100)}%,92%,0.8)` }),
+        h("polygon", { points: "38,58 38,8 52,22 52,62", fill: `hsla(${hu+10},${s}%,55%,0.7)` }),
+        h("polygon", { points: "52,62 52,22 56,28 56,64", fill: `hsla(${hu+20},${Math.max(s-5,10)}%,25%,0.75)` }),
+        // Top point
+        h("polygon", { points: "18,28 38,8 52,22", fill: `hsla(${hu},${s+10}%,95%,0.9)` }),
+        // Edges — tier steps
+        h("line", { x1: 5, y1: 105, x2: 72, y2: 110, stroke: "white", strokeWidth: 0.6, opacity: 0.4 }),
+        h("line", { x1: 12, y1: 62, x2: 64, y2: 66, stroke: "white", strokeWidth: 0.6, opacity: 0.45 }),
+        // Vertical edges
+        h("line", { x1: 30, y1: 155, x2: 30, y2: 100, stroke: "white", strokeWidth: 0.7, opacity: 0.5 }),
+        h("line", { x1: 35, y1: 100, x2: 35, y2: 58, stroke: "white", strokeWidth: 0.7, opacity: 0.55 }),
+        h("line", { x1: 38, y1: 58, x2: 38, y2: 8, stroke: "white", strokeWidth: 0.8, opacity: 0.65 }),
+        h("line", { x1: 18, y1: 28, x2: 38, y2: 8, stroke: "white", strokeWidth: 0.6, opacity: 0.7 }),
+        // Sweep on top tier
+        h("polygon", { className: "crystal-sweep", points: "20,30 36,10 38,30 22,50", fill: "white", opacity: 0.5 }),
         // Tip
-        h("circle", { cx: 15, cy: 4, r: 1.5, fill: "white", opacity: 0.6 }),
-        h("circle", { cx: 15, cy: 4, r: 4, fill: "white", opacity: 0.2, filter: `url(#sp${id})` }),
-        h("circle", { cx: 14, cy: 30, r: 3, fill: "white", opacity: 0, className: "crystal-glint" }),
+        h("circle", { cx: 36, cy: 10, r: 1.5, fill: "white", opacity: 0.6 }),
+        h("circle", { cx: 36, cy: 10, r: 5, fill: "white", opacity: 0.2, filter: `url(#tw${id})` }),
+        h("circle", { cx: 32, cy: 35, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
 
@@ -659,15 +675,15 @@
 
     // Each shape has a render function + natural width/height ratio
     const SHAPES = [
-      { fn: CrystalHex,      w: 80,  h: 150 },  // thick column + point
-      { fn: CrystalNeedle,   w: 36,  h: 200 },  // very thin + tall
-      { fn: CrystalDouble,   w: 70,  h: 160 },  // points both ends
-      { fn: CrystalCluster,  w: 120, h: 160 },  // wide multi-crystal
-      { fn: CrystalDiamond,  w: 90,  h: 120 },  // wide bi-pyramid
-      { fn: CrystalBlade,    w: 40,  h: 200 },  // flat + very tall
-      { fn: CrystalSpire,    w: 30,  h: 220 },  // thinnest + tallest
-      { fn: CrystalTwin,     w: 100, h: 150 },  // wide forked pair
-      { fn: CrystalShard,    w: 60,  h: 140 },  // medium irregular
+      { fn: CrystalHex,      w: 80,  h: 150 },  // ratio 0.53 — classic column
+      { fn: CrystalWedge,    w: 130, h: 130 },  // ratio 1.0  — wide slab
+      { fn: CrystalDouble,   w: 50,  h: 200 },  // ratio 0.25 — very tall thin
+      { fn: CrystalCluster,  w: 140, h: 140 },  // ratio 1.0  — wide cluster
+      { fn: CrystalDiamond,  w: 110, h: 100 },  // ratio 1.1  — wider than tall
+      { fn: CrystalBent,     w: 100, h: 160 },  // ratio 0.63 — medium
+      { fn: CrystalTower,    w: 80,  h: 200 },  // ratio 0.4  — tall stepped
+      { fn: CrystalTwin,     w: 120, h: 130 },  // ratio 0.92 — wide pair
+      { fn: CrystalShard,    w: 40,  h: 180 },  // ratio 0.22 — thinnest
     ];
 
     function generateStones(count, palette, seed) {
@@ -692,7 +708,7 @@
           stones.push({
             top, left,
             scale: cls.scaleMin + rand() * (cls.scaleMax - cls.scaleMin),
-            stretch: 0.65 + rand() * 0.7, // 0.65–1.35 width multiplier — no two alike
+            stretch: 0.35 + rand() * 1.8, // 0.35–2.15 — thin sheets to chunky blocks
             rotation: -25 + rand() * 50,
             opacity: cls.opacityMin + rand() * (cls.opacityMax - cls.opacityMin),
             hsl: hexToHsl(color),
@@ -788,8 +804,9 @@
       );
     }
 
-    createRoot(document.getElementById("root")).render(h(App));
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
+    createRoot(document.getElementById("root")).render(h(App));
   </script>
 </body>
 </html>
