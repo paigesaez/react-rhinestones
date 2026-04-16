@@ -6,46 +6,75 @@
   <title>Crystals Demo</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Georgia, serif; background: #0a0a14; color: #e0e0e0; position: relative; }
+    body { font-family: Georgia, serif; position: relative; }
     .page { position: relative; min-height: 400vh; }
-    .section {
-      position: relative; z-index: 2;
-      max-width: 600px; margin: 0 auto; padding: 15vh 2rem; text-align: center;
+    .crystal-glint { transition: opacity 0.2s ease-out, transform 0.2s ease-out; transform-origin: center; }
+    /* Sweeping specular that tracks scroll direction — crystals feel like they turn under the light */
+    .crystal-sweep {
+      opacity: calc(var(--glint-t, 0) * 0.9);
+      transform: translateX(calc(var(--glint-s, 0) * 7px)) translateY(calc(var(--glint-s, 0) * -2px));
+      transform-box: fill-box;
+      transform-origin: center;
+      transition: opacity 0.15s ease-out;
     }
-    h1 { font-size: 3rem; font-style: italic; letter-spacing: -0.02em; margin-bottom: 1rem; }
-    p  { font-size: 1.1rem; line-height: 1.7; opacity: 0.7; }
-    .hint { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); font-size: 0.8rem; opacity: 0.4; z-index: 10; }
-    .crystal-glint { transition: opacity 0.25s ease-out, transform 0.25s ease-out; transform-origin: center; }
-    @keyframes crystal-breathe { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.12); } }
-    .crystal-gem { animation: crystal-breathe 4s ease-in-out infinite; }
+    /* Chromatic dispersion — only at peak intensity */
+    .crystal-rainbow {
+      opacity: calc(max(0, var(--glint-t, 0) - 0.55) * 2.2);
+      transition: opacity 0.15s ease-out;
+    }
+    /* Secondary sweep, moves opposite direction for parallax facet feel */
+    .crystal-counter-sweep {
+      opacity: calc(var(--glint-t, 0) * 0.55);
+      transform: translateX(calc(var(--glint-s, 0) * -4px));
+      transform-box: fill-box;
+      transform-origin: center;
+      transition: opacity 0.15s ease-out;
+    }
+    /* Filter chain only on lit crystals — avoids recomputing expensive drop-shadows on all 45 */
+    .crystal-container.is-lit {
+      filter:
+        brightness(calc(1 + var(--glint-t, 0) * 1.0))
+        drop-shadow(0 0 calc(2px + var(--glint-t, 0) * 14px) hsla(var(--glint-hue, 260), 70%, 75%, calc(0.15 + var(--glint-t, 0) * 0.55)))
+        drop-shadow(0 0 calc(8px + var(--glint-t, 0) * 6px) hsla(var(--glint-hue, 260), 65%, 55%, calc(0.18 + var(--glint-t, 0) * 0.25)));
+    }
+    @keyframes crystal-float {
+      0%, 100% { transform: translateY(0) rotate(0deg); filter: brightness(1); }
+      33% { transform: translateY(-6px) rotate(0.8deg); filter: brightness(1.08); }
+      66% { transform: translateY(2px) rotate(-0.5deg); filter: brightness(1.15); }
+    }
+    .crystal-gem {
+      animation: crystal-float 5s ease-in-out infinite;
+      animation-delay: var(--breathe-delay, 0s);
+    }
     @media (prefers-reduced-motion: reduce) {
       .crystal-gem { animation: none; }
-      .crystal-glint { transition: none; }
+      .crystal-glint, .crystal-sweep, .crystal-rainbow, .crystal-counter-sweep { transition: none; transform: none; }
+      .crystal-container { filter: none; }
     }
   </style>
 </head>
 <body>
   <div class="page" id="root"></div>
-  <div class="hint">scroll to see them catch the light</div>
   <script type="module">
     import { createRoot } from "https://esm.sh/react-dom@19/client";
-    import { createElement as h, useEffect, useRef } from "https://esm.sh/react@19";
+    import { createElement as h, useEffect, useRef, useMemo } from "https://esm.sh/react@19";
 
-    // Rich multi-color palette: amethyst, rose quartz, clear, citrine, aquamarine, emerald, sapphire, moonstone
+    // 7-color mineral palette — vivid, not pastel
     const PALETTE = [
-      "#b060d8", "#d088c0", "#e0d8f0",  // purples / rose
-      "#f0e0a0", "#e8c870", "#f0c860",  // warm golds / citrine
-      "#60d0e8", "#80e0f0", "#50b8d8",  // aquamarine
-      "#70e8a0", "#48c878", "#90f0b8",  // emerald
-      "#e8e8f8", "#f0f0ff", "#d0d0e8",  // clear / moonstone
-      "#6080e8", "#8090f0",             // sapphire
+      "#8828d0",  // amethyst
+      "#c040a0",  // rose quartz
+      "#b0b8f0",  // moonstone
+      "#20b0e0",  // aquamarine
+      "#18a050",  // emerald
+      "#3058e0",  // sapphire
+      "#d0a020",  // citrine
     ];
 
     const SIZE_CLASSES = [
-      { fraction: 0.35, scaleMin: 0.25, scaleMax: 0.55, opacityMin: 0.35, opacityMax: 0.6 },
-      { fraction: 0.30, scaleMin: 0.5, scaleMax: 0.85, opacityMin: 0.45, opacityMax: 0.75 },
-      { fraction: 0.22, scaleMin: 0.8, scaleMax: 1.4, opacityMin: 0.55, opacityMax: 0.9 },
-      { fraction: 0.13, scaleMin: 1.3, scaleMax: 2.2, opacityMin: 0.65, opacityMax: 1.0 },
+      { fraction: 0.35, scaleMin: 0.25, scaleMax: 0.55, opacityMin: 0.6, opacityMax: 0.8 },
+      { fraction: 0.30, scaleMin: 0.5, scaleMax: 0.85, opacityMin: 0.7, opacityMax: 0.9 },
+      { fraction: 0.22, scaleMin: 0.8, scaleMax: 1.4, opacityMin: 0.8, opacityMax: 1.0 },
+      { fraction: 0.13, scaleMin: 1.3, scaleMax: 2.2, opacityMin: 0.85, opacityMax: 1.0 },
     ];
 
     function makeRand(seed) {
@@ -66,6 +95,24 @@
     // Helper: unique ID per crystal instance
     let _uid = 0;
     function uid() { return 'c' + (_uid++); }
+
+    // Caustic smear — blurred prismatic ellipses on an adjacent facet, visible only at peak glint
+    function causticSmear(cx, cy, angle, len, blurId) {
+      const cols = ["#ff5088", "#ffa048", "#ffee60", "#50e080", "#50a8ff", "#a060f0"];
+      const rad = angle * Math.PI / 180;
+      return cols.map((col, i) => {
+        const off = (i - 2.5) * (len * 0.13);
+        return h("ellipse", {
+          key: `cs${i}`, className: "crystal-rainbow",
+          cx: cx + Math.cos(rad) * off,
+          cy: cy + Math.sin(rad) * off,
+          rx: len * 0.32, ry: 1.6,
+          transform: `rotate(${angle}, ${cx}, ${cy})`,
+          fill: col, opacity: 0.45,
+          filter: `url(#${blurId})`,
+        });
+      });
+    }
 
     // ─── Shape 1: Classic hexagonal prism with termination point ───
     function CrystalHex(hu, s, l) {
@@ -99,6 +146,8 @@
             h("stop", { offset: "100%", stopColor: "rgba(255,255,255,0.98)" }),
           ),
         ),
+        // ── Opaque body — gives the crystal substance on any background
+        h("polygon", { points: "12,130 12,46 38,6 66,50 66,130", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // ── Ambient glow beneath
         h("ellipse", { cx: 38, cy: 80, rx: 25, ry: 55, fill: `hsla(${hu},60%,65%,0.08)`, filter: `url(#gb3${id})` }),
         // ── Deep internal refraction (visible through the glass)
@@ -123,11 +172,11 @@
         h("line", { x1: 28, y1: 38, x2: 38, y2: 6, stroke: `hsla(${hu},60%,95%,0.4)`, strokeWidth: 3, filter: `url(#gb2${id})` }),
         h("line", { x1: 12, y1: 46, x2: 38, y2: 6, stroke: "white", strokeWidth: 0.7, opacity: 0.5 }),
         h("line", { x1: 12, y1: 46, x2: 28, y2: 38, stroke: "white", strokeWidth: 0.5, opacity: 0.4 }),
-        // ── Specular highlight — large bright patch on lit face
-        h("polygon", { points: "16,50 29,38 32,20 20,42", fill: "white", opacity: 0.7 }),
-        h("polygon", { points: "17,48 28,39 30,24 21,43", fill: "white", opacity: 0.3, filter: `url(#gb2${id})` }),
-        // Thin specular streak down column
-        h("polygon", { points: "17,50 22,48 22,95 17,98", fill: "white", opacity: 0.12, filter: `url(#gb2${id})` }),
+        // ── Specular highlight — large bright patch on lit face (tracks scroll as sweep)
+        h("polygon", { className: "crystal-sweep", points: "16,50 29,38 32,20 20,42", fill: "white", opacity: 0.7 }),
+        h("polygon", { className: "crystal-sweep", points: "17,48 28,39 30,24 21,43", fill: "white", opacity: 0.3, filter: `url(#gb2${id})` }),
+        // Thin specular streak down column (counter-sweep: slides opposite for parallax)
+        h("polygon", { className: "crystal-counter-sweep", points: "17,50 22,48 22,95 17,98", fill: "white", opacity: 0.12, filter: `url(#gb2${id})` }),
         // ── Blazing tip glow
         h("circle", { cx: 37, cy: 9, r: 3.5, fill: "white" }),
         h("circle", { cx: 37, cy: 9, r: 8, fill: "white", opacity: 0.35, filter: `url(#gb${id})` }),
@@ -144,6 +193,8 @@
         h("circle", { cx: 20, cy: 65, r: 1.5, fill: "white", opacity: 0.5 }),
         h("circle", { cx: 20, cy: 65, r: 3.5, fill: "white", opacity: 0.15, filter: `url(#gb${id})` }),
         h("circle", { cx: 48, cy: 90, r: 1, fill: "white", opacity: 0.35 }),
+        // Caustic smear on lit column face
+        ...causticSmear(20, 75, -5, 16, `gb${id}`),
         // Glint target
         h("circle", { cx: 28, cy: 36, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
@@ -159,6 +210,8 @@
           h("filter", { id: `nb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 18, cy: 80, rx: 14, ry: 60, fill: `hsla(${hu},55%,60%,0.06)`, filter: `url(#nb3${id})` }),
+        // Opaque body
+        h("polygon", { points: "5,145 5,32 18,2 31,35 31,145", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Internals
         h("polygon", { points: "9,140 9,38 14,30 14,140", fill: `hsla(${hu},55%,88%,0.1)`, filter: `url(#nb${id})` }),
         // Faces — glassy
@@ -174,8 +227,8 @@
         h("line", { x1: 14, y1: 145, x2: 14, y2: 24, stroke: `hsla(${hu},55%,92%,0.3)`, strokeWidth: 3, filter: `url(#nb2${id})` }),
         h("line", { x1: 14, y1: 24, x2: 18, y2: 2, stroke: "white", strokeWidth: 0.9, opacity: 0.85 }),
         h("line", { x1: 5, y1: 32, x2: 18, y2: 2, stroke: "white", strokeWidth: 0.5, opacity: 0.5 }),
-        // Specular streak
-        h("polygon", { points: "7,35 15,24 15,70 7,75", fill: "white", opacity: 0.15, filter: `url(#nb2${id})` }),
+        // Specular streak (counter-sweep: slides as crystal passes the light)
+        h("polygon", { className: "crystal-counter-sweep", points: "7,35 15,24 15,70 7,75", fill: "white", opacity: 0.15, filter: `url(#nb2${id})` }),
         // Tip
         h("circle", { cx: 17, cy: 5, r: 2.5, fill: "white" }),
         h("circle", { cx: 17, cy: 5, r: 6, fill: "white", opacity: 0.3, filter: `url(#nb${id})` }),
@@ -183,6 +236,8 @@
         h("line", { x1: 10, y1: 5, x2: 24, y2: 5, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
         // Prismatic
         h("line", { x1: 15, y1: 24, x2: 19, y2: 2, stroke: `hsla(280,50%,82%,0.15)`, strokeWidth: 1.5, filter: `url(#nb2${id})` }),
+        // Caustic smear on lit face
+        ...causticSmear(10, 65, -3, 10, `nb${id}`),
         h("circle", { cx: 14, cy: 22, r: 4, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
@@ -197,6 +252,8 @@
           h("filter", { id: `db3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 35, cy: 80, rx: 22, ry: 60, fill: `hsla(${hu},55%,60%,0.06)`, filter: `url(#db3${id})` }),
+        // Opaque body
+        h("polygon", { points: "10,120 10,40 34,5 60,44 60,120 34,155", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Internals
         h("polygon", { points: "16,115 16,45 24,40 24,115", fill: `hsla(${hu},50%,88%,0.1)`, filter: `url(#db${id})` }),
         h("ellipse", { cx: 32, cy: 80, rx: 7, ry: 22, fill: `hsla(${hu},40%,85%,0.08)`, filter: `url(#db${id})` }),
@@ -218,9 +275,9 @@
         h("line", { x1: 24, y1: 32, x2: 34, y2: 5, stroke: "white", strokeWidth: 1, opacity: 0.85 }),
         h("line", { x1: 10, y1: 40, x2: 34, y2: 5, stroke: "white", strokeWidth: 0.6, opacity: 0.45 }),
         h("line", { x1: 24, y1: 120, x2: 34, y2: 155, stroke: "white", strokeWidth: 0.7, opacity: 0.5 }),
-        // Specular
-        h("polygon", { points: "14,44 25,32 28,18 18,38", fill: "white", opacity: 0.65 }),
-        h("polygon", { points: "15,42 24,33 27,22 19,39", fill: "white", opacity: 0.25, filter: `url(#db2${id})` }),
+        // Specular (sweeping highlights track scroll)
+        h("polygon", { className: "crystal-sweep", points: "14,44 25,32 28,18 18,38", fill: "white", opacity: 0.65 }),
+        h("polygon", { className: "crystal-sweep", points: "15,42 24,33 27,22 19,39", fill: "white", opacity: 0.25, filter: `url(#db2${id})` }),
         // Top tip
         h("circle", { cx: 33, cy: 8, r: 3, fill: "white" }),
         h("circle", { cx: 33, cy: 8, r: 7, fill: "white", opacity: 0.3, filter: `url(#db${id})` }),
@@ -235,6 +292,8 @@
         // Face sparkles
         h("circle", { cx: 18, cy: 60, r: 1.2, fill: "white", opacity: 0.45 }),
         h("circle", { cx: 40, cy: 95, r: 0.8, fill: "white", opacity: 0.3 }),
+        // Caustic smear on lit face
+        ...causticSmear(18, 70, -6, 16, `db${id}`),
         h("circle", { cx: 24, cy: 30, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
@@ -249,6 +308,8 @@
           h("filter", { id: `tb3${id}` }, h("feGaussianBlur", { stdDeviation: "3.5" })),
         ),
         h("ellipse", { cx: 50, cy: 50, rx: 40, ry: 30, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#tb3${id})` }),
+        // Opaque body
+        h("polygon", { points: "8,65 8,25 50,5 95,28 95,65", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Wide flat faces — very glassy/translucent
         h("polygon", { points: "8,65 8,25 42,10 42,65", fill: `hsla(${hu},${Math.min(s+15,100)}%,92%,0.6)` }),
         h("polygon", { points: "42,65 42,10 85,18 85,65", fill: `hsla(${hu+8},${s+5}%,62%,0.35)` }),
@@ -265,11 +326,11 @@
         h("line", { x1: 42, y1: 65, x2: 42, y2: 10, stroke: `hsla(${hu},55%,92%,0.3)`, strokeWidth: 3, filter: `url(#tb2${id})` }),
         h("line", { x1: 42, y1: 10, x2: 50, y2: 5, stroke: "white", strokeWidth: 0.9, opacity: 0.8 }),
         h("line", { x1: 8, y1: 25, x2: 50, y2: 5, stroke: "white", strokeWidth: 0.6, opacity: 0.5 }),
-        // Big specular patch — flat crystals catch a lot of light
-        h("polygon", { points: "12,28 42,12 46,8 16,24", fill: "white", opacity: 0.6 }),
-        h("polygon", { points: "14,30 40,14 44,10 18,26", fill: "white", opacity: 0.25, filter: `url(#tb2${id})` }),
-        // Wide specular band down face
-        h("polygon", { points: "12,30 20,28 20,55 12,58", fill: "white", opacity: 0.1, filter: `url(#tb2${id})` }),
+        // Big specular patch — flat crystals catch a lot of light (sweeps with scroll)
+        h("polygon", { className: "crystal-sweep", points: "12,28 42,12 46,8 16,24", fill: "white", opacity: 0.6 }),
+        h("polygon", { className: "crystal-sweep", points: "14,30 40,14 44,10 18,26", fill: "white", opacity: 0.25, filter: `url(#tb2${id})` }),
+        // Wide specular band down face (counter-sweep)
+        h("polygon", { className: "crystal-counter-sweep", points: "12,30 20,28 20,55 12,58", fill: "white", opacity: 0.1, filter: `url(#tb2${id})` }),
         // Tip glow
         h("circle", { cx: 49, cy: 7, r: 3, fill: "white" }),
         h("circle", { cx: 49, cy: 7, r: 7, fill: "white", opacity: 0.3, filter: `url(#tb${id})` }),
@@ -280,6 +341,8 @@
         // Face sparkles
         h("circle", { cx: 25, cy: 40, r: 1.3, fill: "white", opacity: 0.5 }),
         h("circle", { cx: 60, cy: 50, r: 0.9, fill: "white", opacity: 0.3 }),
+        // Caustic smear across flat face
+        ...causticSmear(30, 38, 5, 20, `tb${id}`),
         h("circle", { cx: 42, cy: 10, r: 4, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
@@ -296,6 +359,9 @@
           h("filter", { id: `cb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 50, cy: 85, rx: 35, ry: 50, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#cb3${id})` }),
+        // Opaque body (main + secondary crystal silhouette)
+        h("polygon", { points: "8,125 8,42 30,6 50,44 50,125", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
+        h("polygon", { points: "42,55 42,51 62,33 82,56 82,130 42,130", fill: `hsla(${hu+15},${Math.max(s,55)}%,32%,0.88)` }),
         // ─ Main crystal (left, tallest)
         // Internals
         h("polygon", { points: "14,120 14,48 22,42 22,120", fill: `hsla(${hu},50%,88%,0.1)`, filter: `url(#cb${id})` }),
@@ -312,8 +378,8 @@
         h("line", { x1: 22, y1: 125, x2: 22, y2: 34, stroke: `hsla(${hu},55%,92%,0.25)`, strokeWidth: 3, filter: `url(#cb2${id})` }),
         h("line", { x1: 22, y1: 34, x2: 30, y2: 6, stroke: "white", strokeWidth: 1, opacity: 0.85 }),
         h("line", { x1: 8, y1: 42, x2: 30, y2: 6, stroke: "white", strokeWidth: 0.6, opacity: 0.45 }),
-        // Specular
-        h("polygon", { points: "12,46 23,34 26,18 16,40", fill: "white", opacity: 0.65 }),
+        // Specular (sweeps)
+        h("polygon", { className: "crystal-sweep", points: "12,46 23,34 26,18 16,40", fill: "white", opacity: 0.65 }),
         // Tip glow
         h("circle", { cx: 29, cy: 9, r: 3, fill: "white" }),
         h("circle", { cx: 29, cy: 9, r: 7, fill: "white", opacity: 0.3, filter: `url(#cb${id})` }),
@@ -331,7 +397,7 @@
           h("polygon", { points: "36,30 44,38 24,8", fill: `hsla(${hu2+20},${s-8}%,20%,0.5)` }),
           h("line", { x1: 18, y1: 105, x2: 18, y2: 26, stroke: "white", strokeWidth: 0.9, opacity: 0.6 }),
           h("line", { x1: 18, y1: 26, x2: 24, y2: 8, stroke: "white", strokeWidth: 0.8, opacity: 0.75 }),
-          h("polygon", { points: "8,38 19,26 21,14 12,34", fill: "white", opacity: 0.55 }),
+          h("polygon", { className: "crystal-sweep", points: "8,38 19,26 21,14 12,34", fill: "white", opacity: 0.55 }),
           h("circle", { cx: 23, cy: 10, r: 2.5, fill: "white" }),
           h("circle", { cx: 23, cy: 10, r: 5, fill: "white", opacity: 0.25, filter: `url(#cb${id})` }),
           h("line", { x1: 23, y1: 3, x2: 23, y2: 17, stroke: "white", strokeWidth: 0.4, opacity: 0.5 }),
@@ -356,64 +422,57 @@
         h("circle", { cx: 16, cy: 70, r: 1.2, fill: "white", opacity: 0.45 }),
         h("circle", { cx: 55, cy: 85, r: 1, fill: "white", opacity: 0.35 }),
         h("circle", { cx: 35, cy: 50, r: 1.5, fill: "white", opacity: 0.4 }),
+        // Caustic smear on main crystal face
+        ...causticSmear(18, 72, -8, 15, `cb${id}`),
         h("circle", { cx: 28, cy: 32, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
 
-    // ─── Shape 6: Round brilliant (top-down, 16 triangles tiling perfectly) ───
-    function CrystalRound(hu, s, l) {
+    // ─── Shape 6: Fluorite cube (isometric) ───
+    function CrystalCube(hu, s, l) {
       const id = uid();
-      const cx = 40, cy = 40, or = 32, ir = 14, n = 8;
-      // Compute outer and inner vertex positions (inner rotated by half-step)
-      const ov = [], iv = [];
-      for (let i = 0; i < n; i++) {
-        const ao = (i / n) * Math.PI * 2 - Math.PI / 2;
-        const ai = ((i + 0.5) / n) * Math.PI * 2 - Math.PI / 2;
-        ov.push([cx + Math.cos(ao) * or, cy + Math.sin(ao) * or]);
-        iv.push([cx + Math.cos(ai) * ir, cy + Math.sin(ai) * ir]);
-      }
-      // 16 triangles: for each i, outer[i]→outer[i+1]→inner[i], then outer[i+1]→inner[i+1]→inner[i]
-      const tris = [];
-      for (let i = 0; i < n; i++) {
-        const ni = (i + 1) % n;
-        // Outer triangle (points outward)
-        const colA = `hsla(${hu + i * 4},${Math.min(s + 15, 100)}%,${80 - i * 4}%,${0.6 + (i < 3 ? 0.15 : 0)})`;
-        tris.push(h("polygon", { key: `a${i}`, points: `${ov[i]} ${ov[ni]} ${iv[i]}`, fill: colA }));
-        // Inner triangle (points inward)
-        const colB = `hsla(${hu + 10 + i * 3},${s + 5}%,${55 - i * 3}%,${0.45 + (i < 2 ? 0.15 : 0)})`;
-        tris.push(h("polygon", { key: `b${i}`, points: `${ov[ni]} ${iv[ni]} ${iv[i]}`, fill: colB }));
-      }
-      return h("svg", { viewBox: "0 0 80 80", className: "crystal-gem" },
+      return h("svg", { viewBox: "0 0 80 90", className: "crystal-gem" },
         h("defs", null,
-          h("filter", { id: `rb${id}` }, h("feGaussianBlur", { stdDeviation: "2" })),
-          h("filter", { id: `rb2${id}` }, h("feGaussianBlur", { stdDeviation: "0.8" })),
-          h("filter", { id: `rb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
+          h("filter", { id: `fb${id}` }, h("feGaussianBlur", { stdDeviation: "2" })),
+          h("filter", { id: `fb2${id}` }, h("feGaussianBlur", { stdDeviation: "0.8" })),
+          h("filter", { id: `fb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
-        h("circle", { cx: 40, cy: 40, r: 34, fill: `hsla(${hu},50%,55%,0.06)`, filter: `url(#rb3${id})` }),
-        // All 16 facet triangles — seamless tiling
-        ...tris,
-        // Center table — octagon connecting inner vertices
-        h("polygon", { points: iv.map(p => p.join(",")).join(" "), fill: `hsla(${hu},${Math.min(s + 20, 100)}%,92%,0.7)` }),
-        // Depth through table
-        h("polygon", { points: iv.map(([x, y]) => `${cx + (x - cx) * 0.6},${cy + (y - cy) * 0.6}`).join(" "), fill: `hsla(${hu + 15},${s + 5}%,60%,0.18)`, filter: `url(#rb${id})` }),
-        // Facet edges
-        ...ov.map((p, i) => h("line", { key: `eo${i}`, x1: p[0], y1: p[1], x2: iv[i][0], y2: iv[i][1], stroke: "white", strokeWidth: 0.5, opacity: 0.3 + (i < 3 ? 0.25 : 0) })),
-        ...ov.map((p, i) => h("line", { key: `ei${i}`, x1: p[0], y1: p[1], x2: iv[(i + n - 1) % n][0], y2: iv[(i + n - 1) % n][1], stroke: "white", strokeWidth: 0.4, opacity: 0.2 + (i < 2 ? 0.2 : 0) })),
-        // Outer rim
-        h("polygon", { points: ov.map(p => p.join(",")).join(" "), fill: "none", stroke: "white", strokeWidth: 0.7, opacity: 0.35 }),
-        // Specular on upper-left facets
-        h("polygon", { points: `${ov[0]} ${ov[1]} ${iv[0]}`, fill: "white", opacity: 0.55 }),
-        h("polygon", { points: `${ov[1]} ${iv[1]} ${iv[0]}`, fill: "white", opacity: 0.35 }),
-        // Table specular
-        h("polygon", { points: `${iv[0]} ${iv[1]} ${iv[7]}`, fill: "white", opacity: 0.4 }),
-        // Sparkle
-        h("circle", { cx: ov[0][0], cy: ov[0][1], r: 2, fill: "white" }),
-        h("circle", { cx: ov[0][0], cy: ov[0][1], r: 5, fill: "white", opacity: 0.25, filter: `url(#rb${id})` }),
-        h("line", { x1: ov[0][0], y1: ov[0][1] - 6, x2: ov[0][0], y2: ov[0][1] + 6, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
-        h("line", { x1: ov[0][0] - 6, y1: ov[0][1], x2: ov[0][0] + 6, y2: ov[0][1], stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
-        // Prismatic
-        h("line", { x1: iv[7][0], y1: iv[7][1], x2: iv[3][0], y2: iv[3][1], stroke: `hsla(300,45%,80%,0.1)`, strokeWidth: 1.5, filter: `url(#rb2${id})` }),
-        h("circle", { cx: 38, cy: 34, r: 6, fill: "white", opacity: 0, className: "crystal-glint" }),
+        h("ellipse", { cx: 40, cy: 48, rx: 30, ry: 30, fill: `hsla(${hu},50%,55%,0.06)`, filter: `url(#fb3${id})` }),
+        // Opaque body
+        h("polygon", { points: "40,10 72,28 72,64 40,82 8,64 8,28", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
+        // Top face (brightest)
+        h("polygon", { points: "40,10 72,28 40,46 8,28", fill: `hsla(${hu},${Math.min(s+20,100)}%,90%,0.7)` }),
+        // Left face
+        h("polygon", { points: "8,28 40,46 40,82 8,64", fill: `hsla(${hu+5},${Math.min(s+10,100)}%,75%,0.6)` }),
+        // Right face (darkest)
+        h("polygon", { points: "40,46 72,28 72,64 40,82", fill: `hsla(${hu+15},${s-5}%,35%,0.5)` }),
+        // Internal depth
+        h("polygon", { points: "24,37 40,28 40,55 24,46", fill: `hsla(${hu},50%,88%,0.12)`, filter: `url(#fb${id})` }),
+        // Edges
+        h("line", { x1: 40, y1: 10, x2: 72, y2: 28, stroke: "white", strokeWidth: 0.6, opacity: 0.4 }),
+        h("line", { x1: 40, y1: 10, x2: 8, y2: 28, stroke: "white", strokeWidth: 0.7, opacity: 0.5 }),
+        h("line", { x1: 8, y1: 28, x2: 8, y2: 64, stroke: "white", strokeWidth: 0.5, opacity: 0.35 }),
+        h("line", { x1: 8, y1: 28, x2: 40, y2: 46, stroke: "white", strokeWidth: 1, opacity: 0.7 }),
+        h("line", { x1: 40, y1: 46, x2: 40, y2: 82, stroke: "white", strokeWidth: 0.9, opacity: 0.6 }),
+        h("line", { x1: 40, y1: 46, x2: 72, y2: 28, stroke: "white", strokeWidth: 0.6, opacity: 0.35 }),
+        h("line", { x1: 72, y1: 28, x2: 72, y2: 64, stroke: "white", strokeWidth: 0.4, opacity: 0.25 }),
+        h("line", { x1: 8, y1: 64, x2: 40, y2: 82, stroke: "white", strokeWidth: 0.4, opacity: 0.3 }),
+        h("line", { x1: 40, y1: 82, x2: 72, y2: 64, stroke: "white", strokeWidth: 0.35, opacity: 0.2 }),
+        // Specular on top face (sweep)
+        h("polygon", { className: "crystal-sweep", points: "20,24 40,14 40,34 20,34", fill: "white", opacity: 0.5 }),
+        h("polygon", { className: "crystal-sweep", points: "22,26 38,16 38,32 22,32", fill: "white", opacity: 0.2, filter: `url(#fb2${id})` }),
+        // Counter-sweep on left face
+        h("polygon", { className: "crystal-counter-sweep", points: "12,32 30,42 30,58 12,48", fill: "white", opacity: 0.15, filter: `url(#fb2${id})` }),
+        // Corner sparkle
+        h("circle", { cx: 40, cy: 10, r: 2.5, fill: "white" }),
+        h("circle", { cx: 40, cy: 10, r: 6, fill: "white", opacity: 0.25, filter: `url(#fb${id})` }),
+        h("line", { x1: 40, y1: 4, x2: 40, y2: 16, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
+        h("line", { x1: 34, y1: 10, x2: 46, y2: 10, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
+        // Prismatic along top edge
+        h("line", { x1: 8, y1: 28, x2: 40, y2: 10, stroke: `hsla(300,45%,80%,0.12)`, strokeWidth: 1.5, filter: `url(#fb2${id})` }),
+        // Caustic smear on left face
+        ...causticSmear(22, 50, -15, 14, `fb${id}`),
+        h("circle", { cx: 30, cy: 30, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
 
@@ -429,6 +488,8 @@
           h("filter", { id: `td3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 30, cy: 55, rx: 22, ry: 38, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#td3${id})` }),
+        // Opaque body
+        h("polygon", { points: "30,4 8,35 6,60 12,82 30,94 48,82 54,60 52,35", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Upper left: T → L1 → C (bright, lit)
         h("polygon", { points: "30,4 8,35 30,50", fill: `hsla(${hu},${Math.min(s+18,100)}%,92%,0.72)` }),
         // Upper right: T → C → R1 (medium)
@@ -465,9 +526,9 @@
         h("line", { x1: 30, y1: 94, x2: 48, y2: 82, stroke: "white", strokeWidth: 0.3, opacity: 0.2 }),
         h("line", { x1: 48, y1: 82, x2: 54, y2: 60, stroke: "white", strokeWidth: 0.3, opacity: 0.2 }),
         h("line", { x1: 54, y1: 60, x2: 52, y2: 35, stroke: "white", strokeWidth: 0.35, opacity: 0.25 }),
-        // Specular on upper-left facet
-        h("polygon", { points: "22,12 30,6 30,38 14,30", fill: "white", opacity: 0.55 }),
-        h("polygon", { points: "24,16 30,10 30,32 16,28", fill: "white", opacity: 0.2, filter: `url(#td2${id})` }),
+        // Specular on upper-left facet (sweeps)
+        h("polygon", { className: "crystal-sweep", points: "22,12 30,6 30,38 14,30", fill: "white", opacity: 0.55 }),
+        h("polygon", { className: "crystal-sweep", points: "24,16 30,10 30,32 16,28", fill: "white", opacity: 0.2, filter: `url(#td2${id})` }),
         // Tip sparkle
         h("circle", { cx: 29, cy: 7, r: 3, fill: "white" }),
         h("circle", { cx: 29, cy: 7, r: 7, fill: "white", opacity: 0.25, filter: `url(#td${id})` }),
@@ -475,6 +536,8 @@
         h("line", { x1: 22, y1: 7, x2: 36, y2: 7, stroke: "white", strokeWidth: 0.5, opacity: 0.6 }),
         // Prismatic
         h("line", { x1: 10, y1: 35, x2: 50, y2: 35, stroke: `hsla(300,45%,80%,0.1)`, strokeWidth: 1.5, filter: `url(#td2${id})` }),
+        // Caustic smear on upper-left facet
+        ...causticSmear(18, 42, -30, 14, `td${id}`),
         h("circle", { cx: 28, cy: 30, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
@@ -489,6 +552,8 @@
           h("filter", { id: `ob3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("rect", { x: 6, y: 6, width: 78, height: 58, rx: 0, fill: `hsla(${hu},50%,55%,0.05)`, filter: `url(#ob3${id})` }),
+        // Opaque body
+        h("polygon", { points: "10,5 80,5 85,10 85,60 80,65 10,65 5,60 5,10", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Outer step — beveled rectangle
         h("polygon", { points: "10,5 80,5 85,10 85,60 80,65 10,65 5,60 5,10", fill: `hsla(${hu+10},${s-5}%,35%,0.45)` }),
         // Step 1
@@ -509,11 +574,11 @@
         h("line", { x1: 80, y1: 5, x2: 60, y2: 20, stroke: "white", strokeWidth: 0.4, opacity: 0.2 }),
         h("line", { x1: 5, y1: 60, x2: 26, y2: 46, stroke: "white", strokeWidth: 0.4, opacity: 0.25 }),
         h("line", { x1: 85, y1: 60, x2: 64, y2: 46, stroke: "white", strokeWidth: 0.3, opacity: 0.15 }),
-        // Specular band across top steps
-        h("polygon", { points: "12,10 74,10 68,15 16,15", fill: "white", opacity: 0.4 }),
-        h("polygon", { points: "18,15 68,15 60,20 22,20", fill: "white", opacity: 0.3 }),
-        h("polygon", { points: "26,20 60,20 56,26 30,26", fill: "white", opacity: 0.45 }),
-        h("polygon", { points: "14,11 72,11 68,14 18,14", fill: "white", opacity: 0.15, filter: `url(#ob2${id})` }),
+        // Specular band across top steps (step-cut bands sweep independently — parallax)
+        h("polygon", { className: "crystal-sweep", points: "12,10 74,10 68,15 16,15", fill: "white", opacity: 0.4 }),
+        h("polygon", { className: "crystal-counter-sweep", points: "18,15 68,15 60,20 22,20", fill: "white", opacity: 0.3 }),
+        h("polygon", { className: "crystal-sweep", points: "26,20 60,20 56,26 30,26", fill: "white", opacity: 0.45 }),
+        h("polygon", { className: "crystal-sweep", points: "14,11 72,11 68,14 18,14", fill: "white", opacity: 0.15, filter: `url(#ob2${id})` }),
         // Sparkle
         h("circle", { cx: 35, cy: 22, r: 2, fill: "white" }),
         h("circle", { cx: 35, cy: 22, r: 5, fill: "white", opacity: 0.2, filter: `url(#ob${id})` }),
@@ -522,6 +587,8 @@
         // Prismatic along top edge
         h("line", { x1: 10, y1: 6, x2: 80, y2: 6, stroke: `hsla(300,45%,82%,0.1)`, strokeWidth: 1.5, filter: `url(#ob2${id})` }),
         h("line", { x1: 10, y1: 7, x2: 80, y2: 7, stroke: `hsla(55,50%,85%,0.08)`, strokeWidth: 1, filter: `url(#ob2${id})` }),
+        // Caustic smear across table
+        ...causticSmear(45, 32, 0, 18, `ob${id}`),
         h("circle", { cx: 45, cy: 35, r: 6, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
@@ -536,8 +603,8 @@
           h("filter", { id: `chb3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 45, cy: 42, rx: 35, ry: 28, fill: `hsla(${hu},50%,55%,0.06)`, filter: `url(#chb3${id})` }),
-        // Irregular outer shape — rough rock
-        h("polygon", { points: "15,70 5,45 12,20 30,8 55,5 75,15 85,35 80,60 65,72 40,75", fill: `hsla(${hu+10},${s-10}%,30%,0.5)` }),
+        // Irregular outer shape — rough rock (opaque body)
+        h("polygon", { points: "15,70 5,45 12,20 30,8 55,5 75,15 85,35 80,60 65,72 40,75", fill: `hsla(${hu+10},${Math.max(s,50)}%,28%,0.92)` }),
         // Lighter face
         h("polygon", { points: "12,20 30,8 55,5 50,30 25,35", fill: `hsla(${hu},${s}%,65%,0.45)` }),
         // Crystal face exposed inside
@@ -550,9 +617,9 @@
         h("line", { x1: 25, y1: 35, x2: 50, y2: 30, stroke: "white", strokeWidth: 0.8, opacity: 0.55 }),
         h("line", { x1: 50, y1: 30, x2: 60, y2: 45, stroke: "white", strokeWidth: 0.7, opacity: 0.45 }),
         h("line", { x1: 25, y1: 35, x2: 28, y2: 50, stroke: "white", strokeWidth: 0.5, opacity: 0.3 }),
-        // Specular on the crystal face
-        h("polygon", { points: "30,36 46,32 44,38 32,40", fill: "white", opacity: 0.55 }),
-        h("polygon", { points: "32,37 44,33 42,38 34,40", fill: "white", opacity: 0.2, filter: `url(#chb2${id})` }),
+        // Specular on the crystal face (sweeps — exposed druzy catches light)
+        h("polygon", { className: "crystal-sweep", points: "30,36 46,32 44,38 32,40", fill: "white", opacity: 0.55 }),
+        h("polygon", { className: "crystal-sweep", points: "32,37 44,33 42,38 34,40", fill: "white", opacity: 0.2, filter: `url(#chb2${id})` }),
         // Sparkles on crystal surface
         h("circle", { cx: 40, cy: 38, r: 2, fill: "white" }),
         h("circle", { cx: 40, cy: 38, r: 5, fill: "white", opacity: 0.25, filter: `url(#chb${id})` }),
@@ -561,6 +628,8 @@
         h("circle", { cx: 54, cy: 36, r: 1.2, fill: "white", opacity: 0.4 }),
         // Prismatic on crystal edge
         h("line", { x1: 26, y1: 35, x2: 51, y2: 30, stroke: `hsla(300,45%,80%,0.12)`, strokeWidth: 1.5, filter: `url(#chb2${id})` }),
+        // Caustic smear on crystal face
+        ...causticSmear(38, 46, 20, 12, `chb${id}`),
         h("circle", { cx: 40, cy: 36, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
@@ -575,6 +644,8 @@
           h("filter", { id: `di3${id}` }, h("feGaussianBlur", { stdDeviation: "4" })),
         ),
         h("ellipse", { cx: 35, cy: 45, rx: 25, ry: 35, fill: `hsla(${hu},50%,60%,0.06)`, filter: `url(#di3${id})` }),
+        // Opaque body
+        h("polygon", { points: "35,3 8,42 35,88 62,42", fill: `hsla(${hu},${Math.max(s,55)}%,35%,0.92)` }),
         // Top pyramid
         h("polygon", { points: "35,3 8,42 35,48", fill: `hsla(${hu},${Math.min(s+20,100)}%,93%,0.75)` }),
         h("polygon", { points: "35,3 35,48 62,42", fill: `hsla(${hu+8},${s}%,65%,0.45)` }),
@@ -594,9 +665,9 @@
         h("line", { x1: 35, y1: 3, x2: 35, y2: 48, stroke: "white", strokeWidth: 0.9, opacity: 0.7 }),
         h("line", { x1: 35, y1: 88, x2: 8, y2: 42, stroke: "white", strokeWidth: 0.5, opacity: 0.3 }),
         h("line", { x1: 35, y1: 88, x2: 35, y2: 48, stroke: "white", strokeWidth: 0.6, opacity: 0.4 }),
-        // Big specular on upper-left face
-        h("polygon", { points: "18,38 35,8 35,42 12,42", fill: "white", opacity: 0.5 }),
-        h("polygon", { points: "20,38 35,12 35,40 14,42", fill: "white", opacity: 0.2, filter: `url(#di2${id})` }),
+        // Big specular on upper-left face (sweeps — diamond facets flash as they align)
+        h("polygon", { className: "crystal-sweep", points: "18,38 35,8 35,42 12,42", fill: "white", opacity: 0.5 }),
+        h("polygon", { className: "crystal-sweep", points: "20,38 35,12 35,40 14,42", fill: "white", opacity: 0.2, filter: `url(#di2${id})` }),
         // Top tip
         h("circle", { cx: 35, cy: 6, r: 3, fill: "white" }),
         h("circle", { cx: 35, cy: 6, r: 7, fill: "white", opacity: 0.25, filter: `url(#di${id})` }),
@@ -610,6 +681,8 @@
         // Face sparkles
         h("circle", { cx: 25, cy: 35, r: 1.2, fill: "white", opacity: 0.45 }),
         h("circle", { cx: 42, cy: 55, r: 0.8, fill: "white", opacity: 0.3 }),
+        // Caustic smear on upper-left face
+        ...causticSmear(22, 28, -50, 16, `di${id}`),
         h("circle", { cx: 35, cy: 42, r: 5, fill: "white", opacity: 0, className: "crystal-glint" }),
       );
     }
@@ -621,7 +694,7 @@
       { fn: CrystalDouble,   w: 70,  h: 160 },
       { fn: CrystalTabular,  w: 100, h: 90  },
       { fn: CrystalCluster,  w: 100, h: 140 },
-      { fn: CrystalRound,    w: 80,  h: 80  },
+      { fn: CrystalCube,     w: 80,  h: 90  },
       { fn: CrystalTeardrop, w: 60,  h: 100 },
       { fn: CrystalOval,     w: 90,  h: 70  },
       { fn: CrystalRough,    w: 90,  h: 80  },
@@ -631,18 +704,33 @@
     function generateStones(count, palette, seed) {
       const rand = makeRand(seed);
       const stones = [];
+      const placed = []; // Poisson-disk rejection
       for (const cls of SIZE_CLASSES) {
         const n = Math.round(count * cls.fraction);
+        const minDist = 5 * (cls.scaleMin + 0.4); // bigger crystals need more space
         for (let i = 0; i < n; i++) {
+          let top, left, attempts = 0;
+          do {
+            top = rand() * 100;
+            left = rand() * 100;
+            attempts++;
+          } while (attempts < 25 && placed.some(p => {
+            const dt = top - p[0], dl = left - p[1];
+            return Math.sqrt(dt * dt + dl * dl) < minDist;
+          }));
+          placed.push([top, left]);
           const color = palette[Math.floor(rand() * palette.length)];
           stones.push({
-            top: rand()*100, left: rand()*100,
-            scale: cls.scaleMin + rand()*(cls.scaleMax-cls.scaleMin),
-            rotation: -30 + rand()*60, // crystals usually grow roughly upward
-            opacity: cls.opacityMin + rand()*(cls.opacityMax-cls.opacityMin),
+            top, left,
+            scale: cls.scaleMin + rand() * (cls.scaleMax - cls.scaleMin),
+            rotation: -60 + rand() * 120, // wider range ±60°
+            opacity: cls.opacityMin + rand() * (cls.opacityMax - cls.opacityMin),
             hsl: hexToHsl(color),
-            shape: Math.floor(rand()*SHAPES.length),
-            flip: rand()>0.5,
+            shape: Math.floor(rand() * SHAPES.length),
+            flip: rand() > 0.5,
+            breatheDelay: -rand() * 5,
+            tiltAmp: 8 + rand() * 14, // 8–22° — visible tilt as crystal passes light
+            tiltAxis: Math.floor(rand() * 3), // 0=Y, 1=X, 2=diagonal
           });
         }
       }
@@ -651,12 +739,15 @@
 
     function Crystals({ count = 40, palette = PALETTE, seed = 42, intensity = 1, lightPosition = 0.4 }) {
       const ref = useRef(null);
-      const stones = generateStones(count, palette, seed);
+      const stones = useMemo(() => generateStones(count, palette, seed), [count, palette, seed]);
 
       useEffect(() => {
         const wrapper = ref.current;
         if (!wrapper) return;
         const els = wrapper.querySelectorAll("[data-crystal]");
+        // Cache glint NodeLists once at mount instead of querySelectorAll every frame
+        const glintMap = new Map();
+        els.forEach(el => glintMap.set(el, el.querySelectorAll(".crystal-glint")));
         let ticking = false;
         const onScroll = () => {
           if (ticking) return;
@@ -668,18 +759,24 @@
             els.forEach(el => {
               const rect = el.getBoundingClientRect();
               const center = rect.top + rect.height / 2;
+              const signed = (center - lightY) / catchRadius;
               const dist = Math.abs(center - lightY);
+              const sClamped = Math.max(-1.2, Math.min(1.2, signed));
+              el.style.setProperty("--glint-s", sClamped.toFixed(3));
+              const glints = glintMap.get(el);
               if (dist < catchRadius) {
                 const t = 1 - dist / catchRadius;
-                const tt = t * t; // quadratic ease for sharper flash
-                el.style.filter = `brightness(${1 + tt * 1.2}) drop-shadow(0 0 ${3 + tt * 18}px rgba(220,240,255,${0.15 + tt * 0.6}))`;
-                el.querySelectorAll(".crystal-glint").forEach(g => {
+                const tt = t * t;
+                el.style.setProperty("--glint-t", tt.toFixed(3));
+                el.classList.add("is-lit");
+                glints.forEach(g => {
                   g.style.opacity = String(tt * 0.95);
                   g.style.transform = `scale(${1 + tt * 3})`;
                 });
               } else {
-                el.style.filter = "brightness(1) drop-shadow(0 0 2px rgba(200,230,255,0.08))";
-                el.querySelectorAll(".crystal-glint").forEach(g => {
+                el.style.setProperty("--glint-t", "0");
+                el.classList.remove("is-lit");
+                glints.forEach(g => {
                   g.style.opacity = "0"; g.style.transform = "scale(1)";
                 });
               }
@@ -692,22 +789,26 @@
         return () => window.removeEventListener("scroll", onScroll);
       }, [lightPosition]);
 
-      return h("div", { ref, "aria-hidden": true, style: { position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" } },
+      return h("div", { ref, "aria-hidden": true, style: { position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", perspective: "600px" } },
         stones.map((s, i) => {
           const [hu, sat, l] = s.hsl;
           const shape = SHAPES[s.shape];
           // Scale container to match shape's natural aspect ratio
           const baseH = 110;
           const baseW = baseH * (shape.w / shape.h);
+          const sx = s.flip ? -s.scale : s.scale;
+          const tilt = s.tiltAxis === 2
+            ? `rotate3d(1,1,0,calc(var(--glint-s, 0) * ${s.tiltAmp}deg))`
+            : `${s.tiltAxis === 0 ? "rotateY" : "rotateX"}(calc(var(--glint-s, 0) * ${s.tiltAmp}deg))`;
           return h("div", {
-            key: i, "data-crystal": true,
+            key: i, "data-crystal": true, className: "crystal-container",
             style: {
               position: "absolute", top: s.top+"%", left: s.left+"%",
-              transform: `rotate(${s.rotation}deg) scale(${s.scale}) ${s.flip?"scaleX(-1)":""}`,
+              transform: `${tilt} rotate(${s.rotation}deg) scale(${sx}, ${s.scale})`,
               opacity: s.opacity * intensity,
               width: baseW+"px", height: baseH+"px",
-              transition: "filter 0.3s ease-out",
-              filter: "brightness(1) drop-shadow(0 0 2px rgba(200,230,255,0.08))",
+              "--glint-hue": hu,
+              "--breathe-delay": s.breatheDelay + "s",
             }
           }, shape.fn(hu, Math.max(sat, 15), l));
         })
@@ -717,9 +818,6 @@
     function App() {
       return h("div", { style: { position: "relative", minHeight: "400vh" } },
         h(Crystals, { count: 45, seed: 99 }),
-        h("div", { className: "section" }, h("h1", null, "Crystals"), h("p", null, "Scroll down. Watch them catch the light.")),
-        h("div", { className: "section" }, h("h1", null, "Keep going"), h("p", null, "Five crystal forms. Glass-like translucency. White-hot specular highlights.")),
-        h("div", { className: "section" }, h("h1", null, "Mineral."), h("p", null, "Amethyst, citrine, aquamarine, emerald, moonstone, sapphire.")),
       );
     }
 
